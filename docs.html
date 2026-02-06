@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Documentation - WriteProof</title>
+  <meta name="description" content="WriteProof documentation: how to use the editor, export, verify, and interpret authenticity scores.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="navbar-brand">
+      <img src="assets/logo.svg" alt="WriteProof" width="32" height="32">
+      WriteProof
+    </a>
+    <ul class="navbar-links">
+      <li><a href="/">Editor</a></li>
+      <li><a href="verify.html">Verify</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </nav>
+
+  <div class="content-page">
+    <h1>Documentation</h1>
+    <p class="text-muted">Everything you need to know about using WriteProof.</p>
+
+    <h2>Getting Started</h2>
+    <p>WriteProof is a browser-based word processor that creates cryptographic proof of your writing process. No accounts, no setup &mdash; just open the editor and start typing.</p>
+    <ol>
+      <li>Go to the <a href="/">Editor</a></li>
+      <li>Start writing. Every keystroke is automatically recorded.</li>
+      <li>Your document auto-saves to your browser every 5 seconds.</li>
+      <li>When finished, export your document as a .json file or share a link.</li>
+    </ol>
+
+    <h2>Understanding the Interface</h2>
+    <h3>Top Bar</h3>
+    <ul>
+      <li><strong>Document Title</strong> &mdash; Click to edit. Used as the filename when exporting.</li>
+      <li><strong>Word Count</strong> &mdash; Updates in real-time as you type.</li>
+      <li><strong>Character Count</strong> &mdash; Total characters including spaces.</li>
+      <li><strong>Session Time</strong> &mdash; How long you've been writing in this session.</li>
+      <li><strong>Save Status</strong> &mdash; Shows whether changes have been saved.</li>
+    </ul>
+
+    <h3>Bottom Bar</h3>
+    <ul>
+      <li><strong>My Documents</strong> &mdash; View and switch between saved documents.</li>
+      <li><strong>New</strong> &mdash; Create a new blank document.</li>
+      <li><strong>Export</strong> &mdash; Download the document as a .json file with all keystroke data.</li>
+      <li><strong>Import</strong> &mdash; Load a previously exported .json file.</li>
+      <li><strong>Share Link</strong> &mdash; Generate a URL containing your entire document (copies to clipboard).</li>
+      <li><strong>Replay</strong> &mdash; Open the document in the verification/replay view.</li>
+      <li><strong>Score</strong> &mdash; View the writing authenticity score.</li>
+    </ul>
+
+    <h3>Keyboard Shortcuts</h3>
+    <ul>
+      <li><code>Ctrl+S</code> / <code>Cmd+S</code> &mdash; Save document</li>
+      <li><code>Space</code> (on replay page) &mdash; Play/pause replay</li>
+    </ul>
+
+    <h2>Exporting and Sharing</h2>
+    <h3>JSON Export</h3>
+    <p>Click <strong>Export</strong> to download a <code>.writeproof.json</code> file. This file contains:</p>
+    <ul>
+      <li>Your final document text</li>
+      <li>Every keystroke event with timestamps</li>
+      <li>The cryptographic hash chain</li>
+      <li>Document metadata (word count, duration, etc.)</li>
+    </ul>
+    <p>Share this file with anyone who needs to verify your work.</p>
+
+    <h3>URL Sharing</h3>
+    <p>Click <strong>Share Link</strong> to generate a URL that contains your compressed document data. Anyone who opens the link can immediately replay and verify your writing.</p>
+    <p><strong>Note:</strong> Very large documents may exceed URL length limits. In that case, use the JSON export instead.</p>
+
+    <h2>Verifying Documents</h2>
+    <p>To verify a WriteProof document:</p>
+    <ol>
+      <li>Go to the <a href="verify.html">Verify page</a></li>
+      <li>Import a .json file (drag-and-drop or click to browse)</li>
+      <li>Click <strong>Play</strong> to watch the writing replay</li>
+      <li>Click <strong>Verify Hashes</strong> to check the cryptographic integrity</li>
+      <li>Click <strong>Score</strong> to see the authenticity analysis</li>
+    </ol>
+    <p>If hash verification passes, the document hasn't been tampered with after export. If it fails, someone may have modified the keystroke data.</p>
+
+    <h2>Reading the Authenticity Score</h2>
+    <p>The authenticity score (0&ndash;100) analyzes writing behavior to estimate how likely the text was written by a human in real-time. It uses four metrics:</p>
+
+    <h3>Non-linearity (0&ndash;30 points)</h3>
+    <p>Measures how much the writer moved the cursor around. Human writers frequently jump back to edit earlier text. Linear, sequential typing scores lower.</p>
+
+    <h3>Revision Intensity (0&ndash;25 points)</h3>
+    <p>Measures the ratio of deletions to insertions. Human writers regularly delete and rewrite. Very few deletions is unusual.</p>
+
+    <h3>Pause Variability (0&ndash;25 points)</h3>
+    <p>Measures variation in typing rhythm. Humans pause to think, type in bursts, and have variable speeds. Uniform timing is suspicious.</p>
+
+    <h3>Paste Analysis (0&ndash;20 points)</h3>
+    <p>Penalizes large paste operations relative to total content. Small pastes (quotes, citations) are normal. Pasting an entire essay scores very low.</p>
+
+    <h3>Score Interpretation</h3>
+    <ul>
+      <li><strong>75&ndash;100:</strong> High confidence &mdash; Strong indicators of authentic human writing</li>
+      <li><strong>50&ndash;74:</strong> Moderate confidence &mdash; Mostly consistent with human patterns</li>
+      <li><strong>25&ndash;49:</strong> Low confidence &mdash; Some concerning patterns detected</li>
+      <li><strong>0&ndash;24:</strong> Very low confidence &mdash; Patterns inconsistent with typical human writing</li>
+    </ul>
+    <p>The score is one data point, not a definitive judgment. Use it alongside the replay and your own assessment.</p>
+
+    <h2>Privacy &amp; Security</h2>
+    <p>WriteProof runs entirely in your browser. No data is sent to any server. Your documents are stored in your browser's <code>localStorage</code> and only leave your device when you explicitly export or share them. See the <a href="privacy.html">Privacy page</a> for full details.</p>
+
+    <h2>Troubleshooting</h2>
+    <h3>My document disappeared</h3>
+    <p>Documents are stored in your browser's localStorage. Clearing browser data, using incognito/private mode, or switching browsers will remove your documents. Always export important documents as .json files.</p>
+
+    <h3>The share link is too long</h3>
+    <p>Very large documents may exceed URL length limits. Use the JSON export for documents with many keystrokes (>10,000).</p>
+
+    <h3>Hash verification failed</h3>
+    <p>This means the keystroke data has been modified after the hashes were generated. The document may have been tampered with.</p>
+
+    <h3>The editor feels slow</h3>
+    <p>Documents with very large keystroke logs (>50,000 events) may slow down. Consider starting a new document for long writing sessions.</p>
+
+    <h2>For Instructors</h2>
+    <h3>How to Use WriteProof in Your Course</h3>
+    <ol>
+      <li><strong>Announce the tool:</strong> Let students know they can submit WriteProof documents for extra credibility.</li>
+      <li><strong>Request submissions:</strong> For high-stakes assignments, require WriteProof exports alongside final drafts.</li>
+      <li><strong>Review the replay:</strong> Import the student's file and watch their writing process.</li>
+      <li><strong>Check the authenticity score:</strong> Use the score as one data point (not the only factor) in evaluating work.</li>
+    </ol>
+
+    <h3>Sample Syllabus Language</h3>
+    <p><em>"For major writing assignments, you may optionally submit a WriteProof verification file alongside your final draft. This demonstrates your writing process and can help build trust in your work. Visit writeproof.github.io to get started."</em></p>
+
+    <h3>Sample Assignment Instructions</h3>
+    <p><em>"Submit your final essay as a .docx file AND a WriteProof .json export. The WriteProof file should show your complete writing session. If you write across multiple sessions, export each session separately."</em></p>
+
+    <h2>Technical Details</h2>
+    <ul>
+      <li><strong>Hashing:</strong> SHA-256 via the Web Crypto API</li>
+      <li><strong>Hash Checkpoints:</strong> Created every 10 keystrokes</li>
+      <li><strong>Hash Chain:</strong> Each checkpoint includes a cumulative hash of all previous checkpoints</li>
+      <li><strong>Timestamps:</strong> <code>performance.now()</code> for microsecond precision</li>
+      <li><strong>Storage:</strong> <code>localStorage</code> under the key <code>writeproof_docs</code></li>
+      <li><strong>URL Compression:</strong> LZ-String for compact shareable URLs</li>
+      <li><strong>Browser Support:</strong> Chrome, Firefox, Safari (14+), Edge &mdash; any browser with Web Crypto API</li>
+    </ul>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>Made by Franklin R. Castillo &middot; &copy; 2026 &middot; Open Source (MIT License)</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

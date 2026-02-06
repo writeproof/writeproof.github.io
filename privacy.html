@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy - WriteProof</title>
+  <meta name="description" content="WriteProof privacy policy: zero data collection, no servers, everything runs in your browser.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/" class="navbar-brand">
+      <img src="assets/logo.svg" alt="WriteProof" width="32" height="32">
+      WriteProof
+    </a>
+    <ul class="navbar-links">
+      <li><a href="/">Editor</a></li>
+      <li><a href="verify.html">Verify</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+  </nav>
+
+  <div class="content-page">
+    <h1>Privacy Policy</h1>
+    <p class="text-muted">Last updated: February 2026</p>
+
+    <h2>Our Privacy Promise</h2>
+    <p>WriteProof collects <strong>zero data</strong>. Here's what that means:</p>
+
+    <h3>What we DON'T collect</h3>
+    <ul>
+      <li>Your writing content</li>
+      <li>Your keystrokes</li>
+      <li>Your documents</li>
+      <li>Your email address</li>
+      <li>Your IP address</li>
+      <li>Your browsing history</li>
+      <li>Analytics or usage data</li>
+    </ul>
+
+    <h3>What we DO store</h3>
+    <p><strong>Nothing.</strong> We have no servers, no database, no backend.</p>
+
+    <h3>Where your data lives</h3>
+    <ul>
+      <li>In your browser's <code>localStorage</code> (on your device only)</li>
+      <li>In exported files (which you control)</li>
+      <li>In shared URLs (which you choose to share)</li>
+      <li>Nowhere else</li>
+    </ul>
+
+    <h3>How we make money</h3>
+    <p>We don't. This is a public good project. WriteProof is funded by voluntary donations and the goodwill of the open-source community.</p>
+
+    <h2>Can you trust us?</h2>
+    <p>Don't trust &mdash; verify. WriteProof is fully open source. <a href="https://github.com/writeproof/writeproof.github.io" target="_blank" rel="noopener">Inspect the code yourself</a> or have a developer you trust review it. There is no minified or obfuscated code. What you see is what runs in your browser.</p>
+
+    <h2>Security Considerations</h2>
+    <p>WriteProof uses industry-standard cryptography (SHA-256 via the Web Crypto API) to generate verification hashes. The hash chain creates a tamper-evident record of your writing session.</p>
+    <p>However, like any client-side tool, WriteProof cannot prevent a sophisticated attacker from:</p>
+    <ul>
+      <li>Modifying the code before you use it</li>
+      <li>Generating fake keystroke logs with realistic patterns</li>
+      <li>Reconstructing hash chains after the fact</li>
+    </ul>
+    <p>For high-stakes verification, consider:</p>
+    <ul>
+      <li>Downloading the WriteProof code and running it locally</li>
+      <li>Using the tool in a controlled environment (proctored setting)</li>
+      <li>Combining WriteProof with other verification methods</li>
+    </ul>
+
+    <h2>Browser Compatibility</h2>
+    <ul>
+      <li><strong>Chrome/Edge:</strong> Full support</li>
+      <li><strong>Firefox:</strong> Full support</li>
+      <li><strong>Safari:</strong> Full support (macOS 11+, iOS 14+)</li>
+      <li><strong>Internet Explorer:</strong> Not supported</li>
+    </ul>
+
+    <h2>Data Deletion</h2>
+    <p>Since your data lives in your browser's localStorage, you can delete it at any time:</p>
+    <ul>
+      <li>Open the Editor, go to <strong>My Documents</strong>, and delete individual documents</li>
+      <li>Clear your browser's localStorage for this site</li>
+      <li>Clear all browser data through your browser settings</li>
+    </ul>
+    <p>Once deleted, data cannot be recovered (unless you exported it).</p>
+
+    <h2>Third-Party Services</h2>
+    <p>WriteProof uses <strong>zero</strong> third-party services. No analytics (Google Analytics, etc.), no CDNs, no external scripts, no cookies, no tracking pixels. The site is hosted on GitHub Pages, which may log standard web server access logs per <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener">GitHub's privacy policy</a>.</p>
+
+    <h2>Contact</h2>
+    <p>For privacy concerns or questions, open an issue on our <a href="https://github.com/writeproof/writeproof.github.io/issues" target="_blank" rel="noopener">GitHub repository</a>.</p>
+  </div>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-bottom">
+        <p>Made by Franklin R. Castillo &middot; &copy; 2026 &middot; Open Source (MIT License)</p>
+      </div>
+    </div>
+  </footer>
+</body>
+</html>

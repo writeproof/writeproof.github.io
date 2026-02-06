@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WriteProof - Verify &amp; Replay</title>
+  <meta name="description" content="Verify and replay WriteProof documents. Watch the writing process and verify cryptographic integrity.">
+  <meta property="og:title" content="WriteProof - Verify Document">
+  <meta property="og:description" content="Replay a writing session and verify its cryptographic integrity.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="verify-layout" id="verify-app">
+
+    <!-- Header -->
+    <nav class="navbar">
+      <a href="/" class="navbar-brand">
+        <img src="assets/logo.svg" alt="WriteProof" width="32" height="32">
+        WriteProof
+      </a>
+      <ul class="navbar-links">
+        <li><a href="/">Editor</a></li>
+        <li><a href="docs.html">Docs</a></li>
+        <li><a href="about.html">About</a></li>
+      </ul>
+    </nav>
+
+    <!-- Import Screen -->
+    <div id="import-screen" class="section" style="max-width: 640px; margin: 0 auto;">
+      <h2 class="text-center" style="margin-bottom: 0.5rem;">Verify a Document</h2>
+      <p class="text-center text-muted" style="margin-bottom: 2rem;">
+        Import a WriteProof .json file or open a shared link to replay and verify the writing process.
+      </p>
+      <div id="drop-zone" class="import-zone" role="button" tabindex="0" aria-label="Click or drop a file to import">
+        <p style="font-size: 2rem; margin-bottom: 0.5rem;">&#128196;</p>
+        <p style="font-weight: 600; margin-bottom: 0.25rem;">Drop a .json file here</p>
+        <p class="text-sm">or click to browse</p>
+        <input type="file" id="verify-file-input" accept=".json,.writeproof.json">
+      </div>
+      <p id="import-error" class="text-center" style="color: var(--color-danger); margin-top: 1rem; display: none;"></p>
+    </div>
+
+    <!-- Replay Screen (hidden by default) -->
+    <div id="replay-screen" style="display: none; flex: 1; flex-direction: column;">
+
+      <!-- Replay Header -->
+      <div class="verify-header flex justify-between items-center">
+        <div>
+          <h3 id="replay-title" style="margin: 0;">Document</h3>
+          <span id="replay-meta" class="text-sm text-muted"></span>
+        </div>
+        <div class="flex gap-1">
+          <button id="btn-verify" class="btn btn-sm btn-outline">Verify Hashes</button>
+          <button id="btn-show-score" class="btn btn-sm btn-primary">Score</button>
+          <button id="btn-back" class="btn btn-sm btn-secondary">Back</button>
+        </div>
+      </div>
+
+      <!-- Replay Controls -->
+      <div class="replay-controls">
+        <button id="btn-play" class="btn btn-sm btn-primary" aria-label="Play">&#9654; Play</button>
+        <select id="speed-select" class="speed-select" aria-label="Playback speed">
+          <option value="0.5">0.5x</option>
+          <option value="1" selected>1x</option>
+          <option value="2">2x</option>
+          <option value="5">5x</option>
+          <option value="10">10x</option>
+        </select>
+        <div id="progress-bar" class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="progress-fill" class="progress-fill" style="width: 0%;"></div>
+        </div>
+        <span id="progress-label" class="text-xs text-muted" style="white-space: nowrap;">0 / 0</span>
+      </div>
+
+      <!-- Replay Area -->
+      <div class="replay-area">
+        <div id="replay-textarea" class="replay-textarea" aria-label="Replay content"></div>
+      </div>
+
+      <!-- Status Panel -->
+      <div class="verify-status" id="status-panel">
+        <div class="status-item">
+          <span class="text-muted">Timestamp:</span>
+          <span id="status-time">00:00:00</span>
+        </div>
+        <div class="status-item">
+          <span class="text-muted">Keystroke:</span>
+          <span id="status-keystroke">0 / 0</span>
+        </div>
+        <div class="status-item">
+          <span class="text-muted">Hash Status:</span>
+          <span id="status-hash" class="badge badge-info">Not verified</span>
+        </div>
+        <div class="status-item">
+          <span class="text-muted">Checkpoints:</span>
+          <span id="status-checkpoints">0 / 0</span>
+        </div>
+      </div>
+
+      <!-- Score Section (hidden initially) -->
+      <div id="score-section" style="display: none; border-top: 1px solid var(--color-gray-200); padding: 1rem; max-height: 50vh; overflow-y: auto;">
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/verify-main.js"></script>
+</body>
+</html>
