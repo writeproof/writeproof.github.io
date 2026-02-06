@@ -18,12 +18,12 @@ WriteProof records every keystroke with microsecond-precision timestamps and bui
 
 ## Getting Started
 
-Open [writeproof.github.io](https://writeproof.github.io) and start writing. No setup required.
+Open [writeproof.github.io/writeproof](https://writeproof.github.io/writeproof/) and start writing. No setup required.
 
 To run locally:
 
 ```
-git clone https://github.com/writeproof/writeproof.github.io.git
+git clone https://github.com/writeproof/writeproof.git
 cd writeproof.github.io
 python3 -m http.server 8000
 # Open http://localhost:8000
@@ -86,7 +86,7 @@ The score (0--100) evaluates how human-like the writing pattern is:
 
 ## Privacy
 
-Everything runs in your browser. No servers, no database, no backend. Your data lives in localStorage and exported files -- nowhere else. [Read more](https://writeproof.github.io/privacy.html).
+Everything runs in your browser. No servers, no database, no backend. Your data lives in localStorage and exported files -- nowhere else. [Read more](https://writeproof.github.io/writeproof/privacy.html).
 
 ## License
 
