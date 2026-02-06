@@ -2,7 +2,7 @@
 
 import { Editor } from './core/editor.js';
 import { listDocuments, deleteDocument, loadDocument } from './core/storage.js';
-import { exportToJSON, importFromJSON, generateShareURL } from './features/export.js';
+import { exportToJSON, importFromJSON } from './features/export.js';
 import { calculateAuthenticityScore } from './features/analytics.js';
 import { showNotification, showModal } from './ui/components.js';
 import { renderDocumentList, renderScoreDisplay } from './ui/views.js';
@@ -189,30 +189,6 @@ fileInput.addEventListener('change', async (e) => {
     showNotification(err.message, 'error');
   }
   fileInput.value = '';
-});
-
-// Share Link
-document.getElementById('btn-share').addEventListener('click', async () => {
-  const doc = editor.getDocument();
-  if (!doc) {
-    showNotification('No document to share. Start writing first.', 'warning');
-    return;
-  }
-  editor.save();
-
-  try {
-    const url = await generateShareURL(doc);
-    // Try clipboard API first, fallback to prompt
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      await navigator.clipboard.writeText(url);
-      showNotification('Share link copied to clipboard!', 'success');
-    } else {
-      // Fallback: show URL in a prompt for manual copy
-      prompt('Copy this share link:', url);
-    }
-  } catch (err) {
-    showNotification(err.message, 'error');
-  }
 });
 
 // Replay

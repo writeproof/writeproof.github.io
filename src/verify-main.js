@@ -2,7 +2,7 @@
 
 import { loadDocument } from './core/storage.js';
 import { verifyDocument } from './core/hashing.js';
-import { importFromJSON, parseShareURL } from './features/export.js';
+import { importFromJSON } from './features/export.js';
 import { ReplayEngine } from './features/replay.js';
 import { calculateAuthenticityScore } from './features/analytics.js';
 import { showNotification } from './ui/components.js';
@@ -249,20 +249,6 @@ async function init() {
       return;
     }
     showNotification('Document not found in local storage', 'warning');
-  }
-
-  // Load from shared URL data
-  const data = params.get('data');
-  if (data) {
-    try {
-      const doc = await parseShareURL(window.location.href);
-      if (doc) {
-        loadDoc(doc);
-        return;
-      }
-    } catch (err) {
-      showNotification(`Failed to load shared document: ${err.message}`, 'error');
-    }
   }
 }
 
