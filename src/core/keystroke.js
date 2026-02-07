@@ -150,7 +150,7 @@ export class KeystrokeRecorder {
       const deletedLen = prevValue.length - newValue.length;
       const deletePos = e.inputType.includes('Forward') ? selStart : selStart - deletedLen + selectedLen;
       const actualPos = Math.max(0, selectedLen > 0 ? selStart : deletePos);
-      const deletedChars = prevValue.slice(actualPos, actualPos + deletedLen + selectedLen);
+      const deletedChars = prevValue.slice(actualPos, actualPos + deletedLen);
 
       events.push({
         t,
@@ -221,7 +221,7 @@ export class KeystrokeRecorder {
           t,
           y: 'd',
           p: deletePos,
-          c: prevValue.slice(deletePos, deletePos + Math.abs(lenDiff) + selectedLen),
+          c: prevValue.slice(deletePos, deletePos + Math.abs(lenDiff)),
         });
       }
     }
