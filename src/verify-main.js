@@ -26,7 +26,6 @@ const progressLabel = document.getElementById('progress-label');
 const statusTime = document.getElementById('status-time');
 const statusKeystroke = document.getElementById('status-keystroke');
 const statusHash = document.getElementById('status-hash');
-const statusChain = document.getElementById('status-chain');
 const scoreSection = document.getElementById('score-section');
 
 let engine = null;
@@ -78,7 +77,6 @@ function loadDoc(doc) {
   replayMeta.textContent = `${formatNumber(doc.keystrokeLog.length)} keystrokes \u00b7 ${formatNumber(countWords(doc.content))} words \u00b7 Created ${new Date(doc.createdAt).toLocaleDateString()}`;
 
   statusKeystroke.textContent = `0 / ${formatNumber(doc.keystrokeLog.length)}`;
-  statusChain.textContent = doc.chainHash ? 'Not verified' : 'No chain';
 
   // Initialize replay engine
   engine = new ReplayEngine(doc, {
@@ -161,25 +159,18 @@ document.addEventListener('keydown', (e) => {
 // Verify hashes
 document.getElementById('btn-verify').addEventListener('click', async () => {
   if (!currentDoc) return;
-  showNotification('Verifying hash chain...', 'info', 10000);
+  showNotification('Verifying...', 'info', 10000);
 
   const results = await verifyDocument(currentDoc);
 
   if (results.isValid) {
-    statusHash.textContent = 'Valid';
+    statusHash.textContent = 'Verified';
     statusHash.className = 'badge badge-success';
-    statusChain.textContent = 'Valid';
-    statusChain.className = 'badge badge-success';
-    showNotification('Verification passed: chain and content valid', 'success');
+    showNotification('Verification passed', 'success');
   } else {
-    statusHash.textContent = 'Invalid';
+    statusHash.textContent = 'Not Verified';
     statusHash.className = 'badge badge-danger';
-    const parts = [];
-    if (!results.chainValid) parts.push('Chain mismatch');
-    if (!results.contentValid) parts.push('Content mismatch');
-    statusChain.textContent = results.chainValid ? 'Valid' : 'Invalid';
-    statusChain.className = results.chainValid ? 'badge badge-success' : 'badge badge-danger';
-    showNotification(`Verification FAILED: ${parts.join(', ')}`, 'error', 5000);
+    showNotification('Verification failed — document may have been tampered with', 'error', 5000);
   }
 });
 
@@ -206,10 +197,8 @@ document.getElementById('btn-back').addEventListener('click', () => {
   scoreSection.style.display = 'none';
   replayTextarea.textContent = '';
   progressFill.style.width = '0%';
-  statusHash.textContent = 'Not verified';
+  statusHash.textContent = 'Not Verified';
   statusHash.className = 'badge badge-info';
-  statusChain.textContent = 'Not verified';
-  statusChain.className = '';
 });
 
 // --- Auto-load from URL params ---
