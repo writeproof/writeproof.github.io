@@ -100,8 +100,12 @@ export class KeystrokeRecorder {
     this._doc.keystrokeLog.push(event);
 
     this._hashQueue = this._hashQueue.then(async () => {
-      this._prevHash = await computeEventHash(this._prevHash, event);
-      this._doc.chainHash = this._prevHash;
+      try {
+        this._prevHash = await computeEventHash(this._prevHash, event);
+        this._doc.chainHash = this._prevHash;
+      } catch (err) {
+        console.warn('[WriteProof] Hashing error:', err.message);
+      }
     });
 
     if (this._onKeystroke) {

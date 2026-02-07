@@ -123,8 +123,16 @@ export class Editor {
 
   async save() {
     if (!this._doc) return false;
-    // Wait for any pending hash computations so chainHash is consistent
-    if (this._recorder) await this._recorder.hashReady;
+    // Wait for all pending hash computations so chainHash is consistent.
+    // Loop because new events can arrive while we await, extending the queue.
+    if (this._recorder) {
+      let ready = this._recorder.hashReady;
+      await ready;
+      while (this._recorder.hashReady !== ready) {
+        ready = this._recorder.hashReady;
+        await ready;
+      }
+    }
     this._doc.lastModified = new Date().toISOString();
     // Extract current links from the editor DOM
     const { links } = extractContentAndLinks(this._textarea);
