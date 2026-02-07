@@ -159,13 +159,13 @@ document.getElementById('btn-docs').addEventListener('click', () => {
 });
 
 // Export
-document.getElementById('btn-export').addEventListener('click', () => {
+document.getElementById('btn-export').addEventListener('click', async () => {
   const doc = editor.getDocument();
   if (!doc) {
     showNotification('No document to export. Start writing first.', 'warning');
     return;
   }
-  editor.save();
+  await editor.save();
   exportToJSON(doc);
   showNotification('Document exported', 'success');
 });
@@ -192,35 +192,35 @@ fileInput.addEventListener('change', async (e) => {
 });
 
 // Replay
-document.getElementById('btn-replay').addEventListener('click', () => {
+document.getElementById('btn-replay').addEventListener('click', async () => {
   const doc = editor.getDocument();
   if (!doc) {
     showNotification('No document to replay. Start writing first.', 'warning');
     return;
   }
-  editor.save();
+  await editor.save();
   window.location.href = `verify.html?doc=${doc.id}`;
 });
 
 // Writing Profile
-document.getElementById('btn-score').addEventListener('click', () => {
+document.getElementById('btn-score').addEventListener('click', async () => {
   const doc = editor.getDocument();
   if (!doc || doc.keystrokeLog.length < 10) {
     showNotification('Write at least a few sentences to see your writing profile.', 'warning');
     return;
   }
 
-  editor.save();
+  await editor.save();
   const profile = analyzeWritingProfile(doc);
   const content = renderWritingProfile(profile);
   showModal('Writing Profile', content);
 });
 
 // Save on Ctrl+S
-document.addEventListener('keydown', (e) => {
+document.addEventListener('keydown', async (e) => {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault();
-    editor.save();
+    await editor.save();
     showNotification('Saved', 'success', 1500);
   }
 });
@@ -231,8 +231,8 @@ window.addEventListener('beforeunload', () => {
 });
 
 // Save on visibility change
-document.addEventListener('visibilitychange', () => {
-  if (document.hidden) editor.save();
+document.addEventListener('visibilitychange', async () => {
+  if (document.hidden) await editor.save();
 });
 
 // Welcome panel
