@@ -1,4 +1,4 @@
-// SHA-256 hashing and hash chain for WriteProof
+// SHA-256 hashing and event hash chain for WriteProof
 
 export async function generateContentHash(content) {
   if (typeof crypto !== 'undefined' && crypto.subtle) {
@@ -22,99 +22,45 @@ export async function generateContentHash(content) {
   return hash.toString(16).padStart(16, '0');
 }
 
-export async function createHashCheckpoint(doc, content, keystrokeIndex) {
-  const contentHash = await generateContentHash(content !== undefined ? content : doc.content);
-  const previousCumulativeHash =
-    doc.hashChain.length > 0
-      ? doc.hashChain[doc.hashChain.length - 1].cumulativeHash
-      : '0';
-
-  const cumulativeHash = await generateContentHash(
-    previousCumulativeHash + contentHash
-  );
-
-  const idx = keystrokeIndex !== undefined ? keystrokeIndex : doc.keystrokeLog.length - 1;
-  const checkpoint = {
-    timestamp: idx >= 0 && idx < doc.keystrokeLog.length
-      ? doc.keystrokeLog[idx].timestamp
-      : 0,
-    keystrokeIndex: idx,
-    contentHash,
-    cumulativeHash,
-  };
-
-  doc.hashChain.push(checkpoint);
-  return checkpoint;
+export async function computeEventHash(prevHash, event) {
+  const data = `${prevHash}|${event.t}|${event.y}|${event.p}|${event.c || ''}`;
+  return generateContentHash(data);
 }
-
-export const CHECKPOINT_INTERVAL = 10;
 
 export async function verifyDocument(doc) {
   const { insertAt, deleteAt } = await import('../utils/helpers.js');
 
-  const results = {
-    totalCheckpoints: doc.hashChain.length,
-    validCheckpoints: 0,
-    invalidCheckpoints: [],
-    isValid: true,
-  };
-
   if (!doc.keystrokeLog || doc.keystrokeLog.length === 0) {
-    return results;
+    return {
+      isValid: !doc.chainHash,
+      chainValid: !doc.chainHash,
+      contentValid: doc.content === '',
+      replayedContent: '',
+    };
   }
 
-  // Build a map of checkpoint keystroke indices for fast lookup
-  const checkpointMap = new Map();
-  for (const cp of doc.hashChain) {
-    checkpointMap.set(cp.keystrokeIndex, cp);
-  }
-
-  // Replay all keystrokes and verify at checkpoints
+  // Replay all events and recompute hash chain
   let replayContent = '';
-  for (let i = 0; i < doc.keystrokeLog.length; i++) {
-    const event = doc.keystrokeLog[i];
+  let prevHash = '0';
 
-    if (event.type === 'insert' || event.type === 'paste') {
-      replayContent = insertAt(replayContent, event.position, event.char);
-    } else if (event.type === 'delete') {
-      replayContent = deleteAt(replayContent, event.position, event.length);
+  for (const event of doc.keystrokeLog) {
+    if (event.y === 'i' || event.y === 'p') {
+      replayContent = insertAt(replayContent, event.p, event.c);
+    } else if (event.y === 'd') {
+      replayContent = deleteAt(replayContent, event.p, event.c.length);
     }
+    // 'm' events don't affect content
 
-    const checkpoint = checkpointMap.get(i);
-    if (checkpoint) {
-      const computedHash = await generateContentHash(replayContent);
-      if (computedHash === checkpoint.contentHash) {
-        results.validCheckpoints++;
-      } else {
-        results.invalidCheckpoints.push({
-          keystrokeIndex: i,
-          expected: checkpoint.contentHash,
-          actual: computedHash,
-        });
-        results.isValid = false;
-      }
-    }
+    prevHash = await computeEventHash(prevHash, event);
   }
 
-  // Verify cumulative hash chain integrity
-  let previousCumulative = '0';
-  for (let i = 0; i < doc.hashChain.length; i++) {
-    const checkpoint = doc.hashChain[i];
-    const expectedCumulative = await generateContentHash(
-      previousCumulative + checkpoint.contentHash
-    );
+  const chainValid = prevHash === doc.chainHash;
+  const contentValid = replayContent === doc.content;
 
-    if (expectedCumulative !== checkpoint.cumulativeHash) {
-      results.isValid = false;
-      results.invalidCheckpoints.push({
-        type: 'cumulative_hash_mismatch',
-        checkpointIndex: i,
-        expected: expectedCumulative,
-        actual: checkpoint.cumulativeHash,
-      });
-    }
-    previousCumulative = checkpoint.cumulativeHash;
-  }
-
-  return results;
+  return {
+    isValid: chainValid && contentValid,
+    chainValid,
+    contentValid,
+    replayedContent,
+  };
 }

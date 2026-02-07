@@ -2,7 +2,7 @@
 
 export function exportToJSON(doc) {
   const exportData = {
-    version: '1.0',
+    version: '2.0',
     id: doc.id,
     title: doc.title,
     createdAt: doc.createdAt,
@@ -10,7 +10,7 @@ export function exportToJSON(doc) {
     content: doc.content,
     links: doc.links || [],
     keystrokeLog: doc.keystrokeLog,
-    hashChain: doc.hashChain,
+    chainHash: doc.chainHash,
     metadata: doc.metadata,
   };
 
@@ -55,9 +55,6 @@ function validateImport(data) {
   if (!data.keystrokeLog || !Array.isArray(data.keystrokeLog)) {
     throw new Error('Missing or invalid keystrokeLog');
   }
-  if (!data.hashChain || !Array.isArray(data.hashChain)) {
-    throw new Error('Missing or invalid hashChain');
-  }
 
   // Normalize to full document structure
   return {
@@ -68,7 +65,7 @@ function validateImport(data) {
     content: data.content || '',
     links: data.links || [],
     keystrokeLog: data.keystrokeLog,
-    hashChain: data.hashChain,
+    chainHash: data.chainHash || '',
     metadata: data.metadata || {
       totalKeystrokes: data.keystrokeLog.length,
       totalTime: 0,
@@ -85,7 +82,7 @@ function sanitizeFilename(name) {
 export async function generateShareURL(doc) {
   const { compressToEncodedURIComponent } = await import('../vendor/lz-string.min.js');
   const exportData = {
-    version: '1.0',
+    version: '2.0',
     id: doc.id,
     title: doc.title,
     createdAt: doc.createdAt,
@@ -93,7 +90,7 @@ export async function generateShareURL(doc) {
     content: doc.content,
     links: doc.links || [],
     keystrokeLog: doc.keystrokeLog,
-    hashChain: doc.hashChain,
+    chainHash: doc.chainHash,
     metadata: doc.metadata,
   };
 

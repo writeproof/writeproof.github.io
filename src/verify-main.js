@@ -26,13 +26,11 @@ const progressLabel = document.getElementById('progress-label');
 const statusTime = document.getElementById('status-time');
 const statusKeystroke = document.getElementById('status-keystroke');
 const statusHash = document.getElementById('status-hash');
-const statusCheckpoints = document.getElementById('status-checkpoints');
+const statusChain = document.getElementById('status-chain');
 const scoreSection = document.getElementById('score-section');
 
 let engine = null;
 let currentDoc = null;
-let verifiedCheckpoints = 0;
-let totalCheckpoints = 0;
 
 // --- Import Handling ---
 
@@ -71,8 +69,6 @@ async function handleFile(file) {
 
 function loadDoc(doc) {
   currentDoc = doc;
-  verifiedCheckpoints = 0;
-  totalCheckpoints = doc.hashChain.length;
 
   // Switch to replay screen
   importScreen.style.display = 'none';
@@ -82,13 +78,12 @@ function loadDoc(doc) {
   replayMeta.textContent = `${formatNumber(doc.keystrokeLog.length)} keystrokes \u00b7 ${formatNumber(countWords(doc.content))} words \u00b7 Created ${new Date(doc.createdAt).toLocaleDateString()}`;
 
   statusKeystroke.textContent = `0 / ${formatNumber(doc.keystrokeLog.length)}`;
-  statusCheckpoints.textContent = `0 / ${formatNumber(totalCheckpoints)}`;
+  statusChain.textContent = doc.chainHash ? 'Not verified' : 'No chain';
 
   // Initialize replay engine
   engine = new ReplayEngine(doc, {
     speed: parseFloat(speedSelect.value),
     onProgress: handleProgress,
-    onHashCheck: handleHashCheck,
     onComplete: handleComplete,
     onStateChange: handleStateChange,
   });
@@ -107,13 +102,6 @@ function handleProgress({ index, total, content, position, timestamp }) {
   progressLabel.textContent = `${formatNumber(index)} / ${formatNumber(total)}`;
   statusKeystroke.textContent = `${formatNumber(index)} / ${formatNumber(total)}`;
   statusTime.textContent = formatTime(timestamp);
-}
-
-function handleHashCheck({ valid }) {
-  if (valid) {
-    verifiedCheckpoints++;
-  }
-  statusCheckpoints.textContent = `${verifiedCheckpoints} / ${formatNumber(totalCheckpoints)}`;
 }
 
 function handleComplete() {
@@ -141,7 +129,6 @@ btnPlay.addEventListener('click', () => {
     if (engine.index >= engine.total) {
       engine.stop();
       replayTextarea.textContent = '';
-      verifiedCheckpoints = 0;
     }
     engine.play();
   }
@@ -181,14 +168,19 @@ document.getElementById('btn-verify').addEventListener('click', async () => {
   if (results.isValid) {
     statusHash.textContent = 'Valid';
     statusHash.className = 'badge badge-success';
-    showNotification(`Hash chain verified: ${results.validCheckpoints}/${results.totalCheckpoints} checkpoints valid`, 'success');
+    statusChain.textContent = 'Valid';
+    statusChain.className = 'badge badge-success';
+    showNotification('Verification passed: chain and content valid', 'success');
   } else {
     statusHash.textContent = 'Invalid';
     statusHash.className = 'badge badge-danger';
-    showNotification(`Hash chain INVALID: ${results.invalidCheckpoints.length} errors found`, 'error', 5000);
+    const parts = [];
+    if (!results.chainValid) parts.push('Chain mismatch');
+    if (!results.contentValid) parts.push('Content mismatch');
+    statusChain.textContent = results.chainValid ? 'Valid' : 'Invalid';
+    statusChain.className = results.chainValid ? 'badge badge-success' : 'badge badge-danger';
+    showNotification(`Verification FAILED: ${parts.join(', ')}`, 'error', 5000);
   }
-
-  statusCheckpoints.textContent = `${results.validCheckpoints} / ${results.totalCheckpoints}`;
 });
 
 // Writing Profile
@@ -216,6 +208,8 @@ document.getElementById('btn-back').addEventListener('click', () => {
   progressFill.style.width = '0%';
   statusHash.textContent = 'Not verified';
   statusHash.className = 'badge badge-info';
+  statusChain.textContent = 'Not verified';
+  statusChain.className = '';
 });
 
 // --- Auto-load from URL params ---

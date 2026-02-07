@@ -7,9 +7,10 @@ export function analyzeWritingProfile(doc) {
     return null;
   }
 
-  const insertions = keystrokes.filter((k) => k.type === 'insert');
-  const deletions = keystrokes.filter((k) => k.type === 'delete');
-  const pastes = keystrokes.filter((k) => k.type === 'paste');
+  const contentEvents = keystrokes.filter((k) => k.y !== 'm');
+  const insertions = keystrokes.filter((k) => k.y === 'i');
+  const deletions = keystrokes.filter((k) => k.y === 'd');
+  const pastes = keystrokes.filter((k) => k.y === 'p');
 
   // --- Composition Stats ---
   const totalKeystrokes = keystrokes.length;
@@ -18,11 +19,11 @@ export function analyzeWritingProfile(doc) {
   const pasteCount = pastes.length;
 
   // --- Pasting Behavior ---
-  const totalCharsPasted = pastes.reduce((sum, k) => sum + k.length, 0);
+  const totalCharsPasted = pastes.reduce((sum, k) => sum + k.c.length, 0);
   const totalChars = doc.content.length || 0;
   const pastePercent = totalChars > 0 ? Math.round((totalCharsPasted / totalChars) * 100) : 0;
   const largestPaste = pastes.length > 0
-    ? Math.max(...pastes.map((k) => k.length))
+    ? Math.max(...pastes.map((k) => k.c.length))
     : 0;
 
   // --- Editing Pattern ---
@@ -33,8 +34,8 @@ export function analyzeWritingProfile(doc) {
   // Edit locality: how often edits are near the previous edit (within 5 chars)
   let nearEdits = 0;
   let farEdits = 0;
-  for (let i = 1; i < keystrokes.length; i++) {
-    const posDiff = Math.abs(keystrokes[i].position - keystrokes[i - 1].position);
+  for (let i = 1; i < contentEvents.length; i++) {
+    const posDiff = Math.abs(contentEvents[i].p - contentEvents[i - 1].p);
     if (posDiff <= 5) {
       nearEdits++;
     } else {
@@ -49,7 +50,7 @@ export function analyzeWritingProfile(doc) {
   // --- Timing Profile ---
   const intervals = [];
   for (let i = 1; i < keystrokes.length; i++) {
-    const interval = keystrokes[i].timestamp - keystrokes[i - 1].timestamp;
+    const interval = keystrokes[i].t - keystrokes[i - 1].t;
     if (interval > 0) {
       intervals.push(interval);
     }

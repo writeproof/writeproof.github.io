@@ -28,7 +28,7 @@ export class Editor {
       content: '',
       links: [],
       keystrokeLog: [],
-      hashChain: [],
+      chainHash: '',
       metadata: {
         totalKeystrokes: 0,
         totalTime: 0,
@@ -166,7 +166,7 @@ export class Editor {
       wordCount: this._doc.metadata.wordCount,
       characterCount: this._doc.metadata.characterCount,
       keystrokeCount: this._doc.keystrokeLog.length,
-      checkpointCount: this._doc.hashChain.length,
+      chainHash: this._doc.chainHash,
       totalTime: this._doc.metadata.totalTime,
       formattedTime: formatTime(this._doc.metadata.totalTime),
       lastModified: this._doc.lastModified,

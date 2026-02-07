@@ -1,7 +1,6 @@
 // Replay engine for WriteProof
 
 import { insertAt, deleteAt, sleep } from '../utils/helpers.js';
-import { generateContentHash } from '../core/hashing.js';
 
 const MAX_DELAY_MS = 3000;
 
@@ -10,7 +9,6 @@ export class ReplayEngine {
     this._doc = doc;
     this._speed = options.speed || 1;
     this._onProgress = options.onProgress || null;
-    this._onHashCheck = options.onHashCheck || null;
     this._onComplete = options.onComplete || null;
     this._onStateChange = options.onStateChange || null;
 
@@ -18,12 +16,6 @@ export class ReplayEngine {
     this._content = '';
     this._state = 'stopped'; // stopped | playing | paused
     this._abortController = null;
-
-    // Build checkpoint map for fast lookup
-    this._checkpointMap = new Map();
-    for (const cp of doc.hashChain) {
-      this._checkpointMap.set(cp.keystrokeIndex, cp);
-    }
 
     // Snapshot cache for seeking (every 1000 keystrokes)
     this._snapshots = new Map();
@@ -37,11 +29,12 @@ export class ReplayEngine {
 
     for (let i = 0; i < log.length; i++) {
       const event = log[i];
-      if (event.type === 'insert' || event.type === 'paste') {
-        content = insertAt(content, event.position, event.char);
-      } else if (event.type === 'delete') {
-        content = deleteAt(content, event.position, event.length);
+      if (event.y === 'i' || event.y === 'p') {
+        content = insertAt(content, event.p, event.c);
+      } else if (event.y === 'd') {
+        content = deleteAt(content, event.p, event.c.length);
       }
+      // 'm' events don't affect content
 
       if ((i + 1) % 1000 === 0) {
         this._snapshots.set(i + 1, content);
@@ -73,22 +66,11 @@ export class ReplayEngine {
 
       const event = log[this._index];
 
-      // Apply keystroke
-      if (event.type === 'insert' || event.type === 'paste') {
-        this._content = insertAt(this._content, event.position, event.char);
-      } else if (event.type === 'delete') {
-        this._content = deleteAt(this._content, event.position, event.length);
-      }
-
-      // Verify hash at checkpoints
-      const checkpoint = this._checkpointMap.get(this._index);
-      if (checkpoint && this._onHashCheck) {
-        const computedHash = await generateContentHash(this._content);
-        this._onHashCheck({
-          index: this._index,
-          valid: computedHash === checkpoint.contentHash,
-          checkpoint,
-        });
+      // Apply keystroke (skip move events for content)
+      if (event.y === 'i' || event.y === 'p') {
+        this._content = insertAt(this._content, event.p, event.c);
+      } else if (event.y === 'd') {
+        this._content = deleteAt(this._content, event.p, event.c.length);
       }
 
       this._index++;
@@ -99,8 +81,8 @@ export class ReplayEngine {
           index: this._index,
           total: log.length,
           content: this._content,
-          position: event.position + (event.type === 'delete' ? 0 : event.char.length),
-          timestamp: event.timestamp,
+          position: event.y === 'd' ? event.p : event.p + (event.c ? event.c.length : 0),
+          timestamp: event.t,
           event,
         });
       }
@@ -108,7 +90,7 @@ export class ReplayEngine {
       // Delay before next keystroke
       if (this._index < log.length && this._state === 'playing') {
         const nextEvent = log[this._index];
-        let delay = (nextEvent.timestamp - event.timestamp) / this._speed;
+        let delay = (nextEvent.t - event.t) / this._speed;
         delay = Math.min(delay, MAX_DELAY_MS / this._speed);
         delay = Math.max(delay, 0);
         if (delay > 5) {
@@ -159,10 +141,10 @@ export class ReplayEngine {
 
     for (let i = snapshotIndex; i < index && i < log.length; i++) {
       const event = log[i];
-      if (event.type === 'insert' || event.type === 'paste') {
-        this._content = insertAt(this._content, event.position, event.char);
-      } else if (event.type === 'delete') {
-        this._content = deleteAt(this._content, event.position, event.length);
+      if (event.y === 'i' || event.y === 'p') {
+        this._content = insertAt(this._content, event.p, event.c);
+      } else if (event.y === 'd') {
+        this._content = deleteAt(this._content, event.p, event.c.length);
       }
     }
 
@@ -174,8 +156,8 @@ export class ReplayEngine {
         index: this._index,
         total: log.length,
         content: this._content,
-        position: event ? event.position : 0,
-        timestamp: event ? event.timestamp : 0,
+        position: event ? event.p : 0,
+        timestamp: event ? event.t : 0,
         event,
       });
     }
