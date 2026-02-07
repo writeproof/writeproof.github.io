@@ -164,6 +164,17 @@ export function setCaretOffset(el, offset) {
  * Convert a DOM position (container + offset) to a plain-text offset.
  */
 function domOffsetToText(root, container, offset) {
+  // Handle the case where the container is the root element itself.
+  // offset then refers to a child index within root.
+  if (container === root) {
+    let textOffset = 0;
+    for (let i = 0; i < offset && i < root.childNodes.length; i++) {
+      const node = root.childNodes[i];
+      textOffset += nodeTextLength(node);
+    }
+    return textOffset;
+  }
+
   let textOffset = 0;
   let found = false;
 
@@ -217,6 +228,32 @@ function domOffsetToText(root, container, offset) {
   }
 
   return textOffset;
+}
+
+/**
+ * Compute the text length of a DOM node (used by domOffsetToText).
+ */
+function nodeTextLength(node) {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return node.textContent.length;
+  }
+  if (node.nodeType === Node.ELEMENT_NODE) {
+    const tag = node.tagName;
+    if (tag === 'BR') return 1;
+    let len = 0;
+    if (tag === 'DIV' || tag === 'P') {
+      const parent = node.parentNode;
+      if (parent) {
+        const idx = Array.prototype.indexOf.call(parent.childNodes, node);
+        if (idx > 0) len += 1;
+      }
+    }
+    for (let i = 0; i < node.childNodes.length; i++) {
+      len += nodeTextLength(node.childNodes[i]);
+    }
+    return len;
+  }
+  return 0;
 }
 
 /**

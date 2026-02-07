@@ -116,127 +116,59 @@ export class KeystrokeRecorder {
   _handleInput(e) {
     if (!this._recording) return;
 
-    // --- All synchronous: capture state and build events ---
-
     const now = performance.now();
     const t = Math.round(now - this._sessionStart);
     const newValue = getTextContent(this._textarea);
     const prevValue = this._prevValue;
-    const selStart = this._prevSelStart;
-    const selEnd = this._prevSelEnd ?? selStart;
-    const selectedLen = selEnd - selStart;
     const isPaste = e.inputType === 'insertFromPaste' || this._isPaste;
     this._isPaste = false;
 
-    let events = [];
-
-    if (isPaste) {
-      const pastedText = newValue.slice(selStart, selStart + (newValue.length - prevValue.length + selectedLen));
-
-      if (selectedLen > 0) {
-        events.push({
-          t,
-          y: 'd',
-          p: selStart,
-          c: prevValue.slice(selStart, selEnd),
-        });
-      }
-
-      events.push({
-        t,
-        y: 'p',
-        p: selStart,
-        c: pastedText,
-      });
-    } else if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward' ||
-               e.inputType === 'deleteByCut' || e.inputType === 'deleteWordBackward' ||
-               e.inputType === 'deleteWordForward' || e.inputType === 'deleteSoftLineBackward') {
-      const deletedLen = prevValue.length - newValue.length;
-      const deletePos = e.inputType.includes('Forward') ? selStart : selStart - deletedLen + selectedLen;
-      const actualPos = Math.max(0, selectedLen > 0 ? selStart : deletePos);
-      const deletedChars = prevValue.slice(actualPos, actualPos + deletedLen);
-
-      events.push({
-        t,
-        y: 'd',
-        p: actualPos,
-        c: deletedChars,
-      });
-    } else if (e.inputType === 'insertText' || e.inputType === 'insertLineBreak' ||
-               e.inputType === 'insertParagraph') {
-      const insertedChar = e.inputType === 'insertText' ? (e.data || '') : '\n';
-
-      if (selectedLen > 0) {
-        events.push({
-          t,
-          y: 'd',
-          p: selStart,
-          c: prevValue.slice(selStart, selEnd),
-        });
-      }
-
-      events.push({
-        t,
-        y: 'i',
-        p: selStart,
-        c: insertedChar,
-      });
-    } else if (e.inputType === 'insertReplacementText') {
-      if (selectedLen > 0) {
-        events.push({
-          t,
-          y: 'd',
-          p: selStart,
-          c: prevValue.slice(selStart, selEnd),
-        });
-      }
-      const currentOffsets = getSelectionOffsets(this._textarea);
-      const inserted = newValue.slice(selStart, currentOffsets.start);
-      if (inserted) {
-        events.push({
-          t,
-          y: 'i',
-          p: selStart,
-          c: inserted,
-        });
-      }
-    } else {
-      const lenDiff = newValue.length - prevValue.length;
-      if (lenDiff > 0) {
-        const inserted = newValue.slice(selStart, selStart + lenDiff + selectedLen);
-        if (selectedLen > 0) {
-          events.push({
-            t,
-            y: 'd',
-            p: selStart,
-            c: prevValue.slice(selStart, selEnd),
-          });
-        }
-        events.push({
-          t,
-          y: 'i',
-          p: selStart,
-          c: inserted,
-        });
-      } else if (lenDiff < 0) {
-        const currentOffsets = getSelectionOffsets(this._textarea);
-        const deletePos = selectedLen > 0 ? selStart : currentOffsets.start;
-        events.push({
-          t,
-          y: 'd',
-          p: deletePos,
-          c: prevValue.slice(deletePos, deletePos + Math.abs(lenDiff)),
-        });
-      }
-    }
-
-    // --- Synchronous updates ---
+    // --- Update state immediately ---
 
     this._doc.content = newValue;
     this._prevValue = newValue;
     const updatedOffsets = getSelectionOffsets(this._textarea);
     this._prevSelStart = updatedOffsets.start;
     this._prevSelEnd = updatedOffsets.end;
+
+    // Skip no-op events (e.g., pressing Delete at end of text)
+    if (newValue === prevValue) return;
+
+    // --- Compute diff via common prefix/suffix ---
+    // This is more robust than inputType-based branching because it
+    // correctly handles autocorrect, spellcheck, undo/redo, IME,
+    // and browser-specific edge cases.
+
+    let prefixLen = 0;
+    const minLen = Math.min(prevValue.length, newValue.length);
+    while (prefixLen < minLen && prevValue[prefixLen] === newValue[prefixLen]) {
+      prefixLen++;
+    }
+
+    let suffixLen = 0;
+    const maxSuffix = minLen - prefixLen;
+    while (suffixLen < maxSuffix &&
+           prevValue[prevValue.length - 1 - suffixLen] === newValue[newValue.length - 1 - suffixLen]) {
+      suffixLen++;
+    }
+
+    const deletedText = prevValue.slice(prefixLen, prevValue.length - suffixLen);
+    const insertedText = newValue.slice(prefixLen, newValue.length - suffixLen);
+
+    let events = [];
+
+    if (deletedText) {
+      events.push({ t, y: 'd', p: prefixLen, c: deletedText });
+    }
+
+    if (insertedText) {
+      events.push({
+        t,
+        y: isPaste ? 'p' : 'i',
+        p: prefixLen,
+        c: insertedText,
+      });
+    }
 
     if (events.length === 0) return;
 
