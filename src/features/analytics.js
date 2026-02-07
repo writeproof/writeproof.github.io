@@ -1,86 +1,103 @@
-// Authenticity score calculation for WriteProof
+// Writing profile analysis for WriteProof
 
-export function calculateAuthenticityScore(doc) {
+export function analyzeWritingProfile(doc) {
   const keystrokes = doc.keystrokeLog;
 
   if (!keystrokes || keystrokes.length < 2) {
-    return {
-      total: 0,
-      breakdown: { nonLinearity: 0, revision: 0, pauseVariability: 0, pasteAnalysis: 0 },
-      interpretation: getInterpretation(0),
-    };
+    return null;
   }
 
-  // 1. Non-linearity Score (0-30)
-  // Measures cursor jumps > 5 positions
-  let nonSequentialEdits = 0;
+  const insertions = keystrokes.filter((k) => k.type === 'insert');
+  const deletions = keystrokes.filter((k) => k.type === 'delete');
+  const pastes = keystrokes.filter((k) => k.type === 'paste');
+
+  // --- Composition Stats ---
+  const totalKeystrokes = keystrokes.length;
+  const insertionCount = insertions.length;
+  const deletionCount = deletions.length;
+  const pasteCount = pastes.length;
+
+  // --- Pasting Behavior ---
+  const totalCharsPasted = pastes.reduce((sum, k) => sum + k.length, 0);
+  const totalChars = doc.content.length || 0;
+  const pastePercent = totalChars > 0 ? Math.round((totalCharsPasted / totalChars) * 100) : 0;
+  const largestPaste = pastes.length > 0
+    ? Math.max(...pastes.map((k) => k.length))
+    : 0;
+
+  // --- Editing Pattern ---
+  const deletionRatio = insertionCount > 0
+    ? Math.round((deletionCount / insertionCount) * 100) / 100
+    : 0;
+
+  // Edit locality: how often edits are near the previous edit (within 5 chars)
+  let nearEdits = 0;
+  let farEdits = 0;
   for (let i = 1; i < keystrokes.length; i++) {
-    const positionDiff = Math.abs(keystrokes[i].position - keystrokes[i - 1].position);
-    if (positionDiff > 5) {
-      nonSequentialEdits++;
+    const posDiff = Math.abs(keystrokes[i].position - keystrokes[i - 1].position);
+    if (posDiff <= 5) {
+      nearEdits++;
+    } else {
+      farEdits++;
     }
   }
-  const nonLinearityScore = Math.min(30, (nonSequentialEdits / keystrokes.length) * 30);
+  const totalEditMoves = nearEdits + farEdits;
+  const localEditPercent = totalEditMoves > 0
+    ? Math.round((nearEdits / totalEditMoves) * 100)
+    : 0;
 
-  // 2. Revision Intensity (0-25)
-  // Measures deletion frequency relative to insertion
-  const deletions = keystrokes.filter((k) => k.type === 'delete').length;
-  const insertions = keystrokes.filter((k) => k.type === 'insert' || k.type === 'paste').length;
-  const revisionScore = insertions > 0 ? Math.min(25, (deletions / insertions) * 50) : 0;
-
-  // 3. Pause Pattern Variability (0-25)
-  // Measures coefficient of variation of inter-keystroke intervals
+  // --- Timing Profile ---
   const intervals = [];
   for (let i = 1; i < keystrokes.length; i++) {
     const interval = keystrokes[i].timestamp - keystrokes[i - 1].timestamp;
-    // Cap intervals at 30s to avoid outlier distortion
-    if (interval > 0 && interval < 30000) {
+    if (interval > 0) {
       intervals.push(interval);
     }
   }
 
-  let pauseScore = 0;
-  if (intervals.length > 1) {
-    const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
-    if (mean > 0) {
-      const variance =
-        intervals.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / intervals.length;
-      const stdDev = Math.sqrt(variance);
-      const cv = stdDev / mean;
-      pauseScore = Math.min(25, cv * 100);
+  let medianInterval = 0;
+  let longestPause = 0;
+  let pausesOver30s = 0;
+
+  if (intervals.length > 0) {
+    const sorted = intervals.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    medianInterval = sorted.length % 2 === 0
+      ? (sorted[mid - 1] + sorted[mid]) / 2
+      : sorted[mid];
+    medianInterval = Math.round(medianInterval);
+
+    longestPause = Math.round(sorted[sorted.length - 1]);
+
+    for (const interval of intervals) {
+      if (interval > 30000) pausesOver30s++;
     }
   }
 
-  // 4. Paste Detection Penalty (0-20)
-  // Penalizes large paste operations
-  const pastedChars = keystrokes
-    .filter((k) => k.type === 'paste')
-    .reduce((sum, k) => sum + k.length, 0);
-  const totalChars = doc.content.length || 1;
-  const pasteScore = Math.max(0, 20 - (pastedChars / totalChars) * 20);
-
-  const totalScore = Math.round(
-    nonLinearityScore + revisionScore + pauseScore + pasteScore
-  );
-
   return {
-    total: Math.max(0, Math.min(100, totalScore)),
-    breakdown: {
-      nonLinearity: Math.round(nonLinearityScore),
-      revision: Math.round(revisionScore),
-      pauseVariability: Math.round(pauseScore),
-      pasteAnalysis: Math.round(pasteScore),
+    composition: {
+      totalKeystrokes,
+      wordCount: doc.metadata?.wordCount || 0,
+      characterCount: totalChars,
+      insertions: insertionCount,
+      deletions: deletionCount,
+      pastes: pasteCount,
     },
-    interpretation: getInterpretation(totalScore),
+    pasting: {
+      pasteCount,
+      totalCharsPasted,
+      pastePercent,
+      largestPaste,
+    },
+    editing: {
+      deletionRatio,
+      localEditPercent,
+      farEditPercent: 100 - localEditPercent,
+    },
+    timing: {
+      medianIntervalMs: medianInterval,
+      longestPauseMs: longestPause,
+      pausesOver30s,
+    },
   };
-}
-
-function getInterpretation(score) {
-  if (score >= 75)
-    return 'High confidence \u2014 Strong indicators of authentic human writing';
-  if (score >= 50)
-    return 'Moderate confidence \u2014 Mostly consistent with human writing patterns';
-  if (score >= 25)
-    return 'Low confidence \u2014 Some concerning patterns detected';
-  return 'Very low confidence \u2014 Patterns inconsistent with typical human writing';
 }

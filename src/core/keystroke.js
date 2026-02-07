@@ -13,6 +13,7 @@ export class KeystrokeRecorder {
     this._recording = false;
     this._onKeystroke = null;
     this._isPaste = false;
+    this._hashQueue = Promise.resolve();
 
     this._handleInput = this._handleInput.bind(this);
     this._handleBeforeInput = this._handleBeforeInput.bind(this);
@@ -66,8 +67,10 @@ export class KeystrokeRecorder {
     this._prevSelEnd = offsets.end;
   }
 
-  async _handleInput(e) {
+  _handleInput(e) {
     if (!this._recording) return;
+
+    // --- All synchronous: capture state and build events ---
 
     const now = performance.now();
     const timestamp = now - this._sessionStart;
@@ -82,10 +85,8 @@ export class KeystrokeRecorder {
     let events = [];
 
     if (isPaste) {
-      // Paste operation
       const pastedText = newValue.slice(selStart, selStart + (newValue.length - prevValue.length + selectedLen));
 
-      // If there was a selection, record the deletion first
       if (selectedLen > 0) {
         events.push({
           timestamp,
@@ -106,7 +107,6 @@ export class KeystrokeRecorder {
     } else if (e.inputType === 'deleteContentBackward' || e.inputType === 'deleteContentForward' ||
                e.inputType === 'deleteByCut' || e.inputType === 'deleteWordBackward' ||
                e.inputType === 'deleteWordForward' || e.inputType === 'deleteSoftLineBackward') {
-      // Deletion
       const deletedLen = prevValue.length - newValue.length;
       const deletePos = e.inputType.includes('Forward') ? selStart : selStart - deletedLen + selectedLen;
       const actualPos = Math.max(0, selectedLen > 0 ? selStart : deletePos);
@@ -121,10 +121,8 @@ export class KeystrokeRecorder {
       });
     } else if (e.inputType === 'insertText' || e.inputType === 'insertLineBreak' ||
                e.inputType === 'insertParagraph') {
-      // Insertion (typing or Enter)
       const insertedChar = e.inputType === 'insertText' ? (e.data || '') : '\n';
 
-      // If there was a selection, record deletion first
       if (selectedLen > 0) {
         events.push({
           timestamp,
@@ -143,7 +141,6 @@ export class KeystrokeRecorder {
         length: insertedChar.length,
       });
     } else if (e.inputType === 'insertReplacementText') {
-      // Autocorrect / spell-check replacements
       if (selectedLen > 0) {
         events.push({
           timestamp,
@@ -165,7 +162,6 @@ export class KeystrokeRecorder {
         });
       }
     } else {
-      // Fallback: diff-based detection
       const lenDiff = newValue.length - prevValue.length;
       if (lenDiff > 0) {
         const inserted = newValue.slice(selStart, selStart + lenDiff + selectedLen);
@@ -198,40 +194,48 @@ export class KeystrokeRecorder {
       }
     }
 
-    // Update doc content
+    // --- Synchronous updates ---
+
     this._doc.content = newValue;
-
-    // Add content hash to each event and push to log
-    try {
-      for (const evt of events) {
-        evt.contentHash = await generateContentHash(newValue);
-        this._doc.keystrokeLog.push(evt);
-
-        // Hash checkpoint every N keystrokes
-        if (this._doc.keystrokeLog.length % CHECKPOINT_INTERVAL === 0) {
-          await createHashCheckpoint(this._doc);
-        }
-      }
-    } catch (err) {
-      // If hashing fails, still record the events without hashes
-      for (const evt of events) {
-        if (!evt.contentHash) evt.contentHash = '';
-        if (!this._doc.keystrokeLog.includes(evt)) {
-          this._doc.keystrokeLog.push(evt);
-        }
-      }
-      console.warn('[WriteProof] Hashing error:', err.message);
-    }
-
-    // Update prev state
     this._prevValue = newValue;
     const updatedOffsets = getSelectionOffsets(this._textarea);
     this._prevSelStart = updatedOffsets.start;
     this._prevSelEnd = updatedOffsets.end;
 
-    if (this._onKeystroke && events.length > 0) {
+    if (events.length === 0) return;
+
+    // Push events to log synchronously so keystroke count is always current
+    const eventIndices = [];
+    for (const evt of events) {
+      this._doc.keystrokeLog.push(evt);
+      eventIndices.push(this._doc.keystrokeLog.length - 1);
+    }
+
+    // Notify UI immediately
+    if (this._onKeystroke) {
       this._onKeystroke(events);
     }
+
+    // --- Queue async hashing (serialized) ---
+
+    const contentForHash = newValue;
+    this._hashQueue = this._hashQueue.then(async () => {
+      try {
+        for (let i = 0; i < events.length; i++) {
+          events[i].contentHash = await generateContentHash(contentForHash);
+
+          // Create checkpoint if this event's position in the log is a multiple of CHECKPOINT_INTERVAL
+          if ((eventIndices[i] + 1) % CHECKPOINT_INTERVAL === 0) {
+            await createHashCheckpoint(this._doc, contentForHash, eventIndices[i]);
+          }
+        }
+      } catch (err) {
+        for (const evt of events) {
+          if (!evt.contentHash) evt.contentHash = '';
+        }
+        console.warn('[WriteProof] Hashing error:', err.message);
+      }
+    });
   }
 
   resetSessionStart() {

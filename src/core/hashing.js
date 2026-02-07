@@ -22,8 +22,8 @@ export async function generateContentHash(content) {
   return hash.toString(16).padStart(16, '0');
 }
 
-export async function createHashCheckpoint(doc) {
-  const contentHash = await generateContentHash(doc.content);
+export async function createHashCheckpoint(doc, content, keystrokeIndex) {
+  const contentHash = await generateContentHash(content !== undefined ? content : doc.content);
   const previousCumulativeHash =
     doc.hashChain.length > 0
       ? doc.hashChain[doc.hashChain.length - 1].cumulativeHash
@@ -33,11 +33,12 @@ export async function createHashCheckpoint(doc) {
     previousCumulativeHash + contentHash
   );
 
+  const idx = keystrokeIndex !== undefined ? keystrokeIndex : doc.keystrokeLog.length - 1;
   const checkpoint = {
-    timestamp: doc.keystrokeLog.length > 0
-      ? doc.keystrokeLog[doc.keystrokeLog.length - 1].timestamp
+    timestamp: idx >= 0 && idx < doc.keystrokeLog.length
+      ? doc.keystrokeLog[idx].timestamp
       : 0,
-    keystrokeIndex: doc.keystrokeLog.length - 1,
+    keystrokeIndex: idx,
     contentHash,
     cumulativeHash,
   };

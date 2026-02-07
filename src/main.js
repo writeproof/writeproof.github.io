@@ -3,9 +3,9 @@
 import { Editor } from './core/editor.js';
 import { listDocuments, deleteDocument, loadDocument } from './core/storage.js';
 import { exportToJSON, importFromJSON } from './features/export.js';
-import { calculateAuthenticityScore } from './features/analytics.js';
+import { analyzeWritingProfile } from './features/analytics.js';
 import { showNotification, showModal } from './ui/components.js';
-import { renderDocumentList, renderScoreDisplay } from './ui/views.js';
+import { renderDocumentList, renderWritingProfile } from './ui/views.js';
 import { formatNumber, formatTime, countWords } from './utils/helpers.js';
 import { getSelectionOffsets, setCaretOffset, getTextContent } from './utils/caret.js';
 
@@ -202,38 +202,18 @@ document.getElementById('btn-replay').addEventListener('click', () => {
   window.location.href = `verify.html?doc=${doc.id}`;
 });
 
-// Score
-document.getElementById('btn-score').addEventListener('click', async () => {
+// Writing Profile
+document.getElementById('btn-score').addEventListener('click', () => {
   const doc = editor.getDocument();
   if (!doc || doc.keystrokeLog.length < 10) {
-    showNotification('Write at least a few sentences to see your score.', 'warning');
+    showNotification('Write at least a few sentences to see your writing profile.', 'warning');
     return;
   }
 
   editor.save();
-  const score = calculateAuthenticityScore(doc);
-
-  const insertions = doc.keystrokeLog.filter((k) => k.type === 'insert').length;
-  const deletions = doc.keystrokeLog.filter((k) => k.type === 'delete').length;
-  const pastes = doc.keystrokeLog.filter((k) => k.type === 'paste').length;
-  const totalTime = doc.metadata.totalTime;
-  const wpm = totalTime > 0
-    ? Math.round(countWords(doc.content) / (totalTime / 60000))
-    : 0;
-
-  const stats = {
-    totalKeystrokes: doc.keystrokeLog.length,
-    insertions,
-    deletions,
-    pastes,
-    wpm,
-    duration: formatTime(totalTime),
-    checkpoints: doc.hashChain.length,
-    checkpointsValid: true,
-  };
-
-  const content = renderScoreDisplay(score, stats);
-  showModal('Writing Authenticity Analysis', content);
+  const profile = analyzeWritingProfile(doc);
+  const content = renderWritingProfile(profile);
+  showModal('Writing Profile', content);
 });
 
 // Save on Ctrl+S

@@ -4,9 +4,9 @@ import { loadDocument } from './core/storage.js';
 import { verifyDocument } from './core/hashing.js';
 import { importFromJSON } from './features/export.js';
 import { ReplayEngine } from './features/replay.js';
-import { calculateAuthenticityScore } from './features/analytics.js';
+import { analyzeWritingProfile } from './features/analytics.js';
 import { showNotification } from './ui/components.js';
-import { renderScoreDisplay } from './ui/views.js';
+import { renderWritingProfile } from './ui/views.js';
 import { formatTime, formatNumber, countWords } from './utils/helpers.js';
 
 // DOM
@@ -191,33 +191,16 @@ document.getElementById('btn-verify').addEventListener('click', async () => {
   statusCheckpoints.textContent = `${results.validCheckpoints} / ${results.totalCheckpoints}`;
 });
 
-// Score
+// Writing Profile
 document.getElementById('btn-show-score').addEventListener('click', () => {
   if (!currentDoc || currentDoc.keystrokeLog.length < 2) {
-    showNotification('Not enough data for scoring', 'warning');
+    showNotification('Not enough data for writing profile', 'warning');
     return;
   }
 
-  const score = calculateAuthenticityScore(currentDoc);
-  const insertions = currentDoc.keystrokeLog.filter((k) => k.type === 'insert').length;
-  const deletions = currentDoc.keystrokeLog.filter((k) => k.type === 'delete').length;
-  const pastes = currentDoc.keystrokeLog.filter((k) => k.type === 'paste').length;
-  const totalTime = currentDoc.metadata?.totalTime || 0;
-  const wpm = totalTime > 0 ? Math.round(countWords(currentDoc.content) / (totalTime / 60000)) : 0;
-
-  const stats = {
-    totalKeystrokes: currentDoc.keystrokeLog.length,
-    insertions,
-    deletions,
-    pastes,
-    wpm,
-    duration: formatTime(totalTime),
-    checkpoints: currentDoc.hashChain.length,
-    checkpointsValid: true,
-  };
-
+  const profile = analyzeWritingProfile(currentDoc);
   scoreSection.innerHTML = '';
-  scoreSection.appendChild(renderScoreDisplay(score, stats));
+  scoreSection.appendChild(renderWritingProfile(profile));
   scoreSection.style.display = scoreSection.style.display === 'none' ? 'block' : 'none';
 });
 

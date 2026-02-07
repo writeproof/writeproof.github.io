@@ -1,7 +1,7 @@
 // Page-specific rendering for WriteProof
 
 import { createElement } from './components.js';
-import { timeSince, formatNumber } from '../utils/helpers.js';
+import { timeSince, formatNumber, formatTime } from '../utils/helpers.js';
 
 export function renderDocumentList(documents, { onOpen, onDelete, onReplay }) {
   const container = document.createElement('div');
@@ -72,86 +72,76 @@ export function renderDocumentList(documents, { onOpen, onDelete, onReplay }) {
   return container;
 }
 
-export function renderScoreDisplay(score, stats) {
-  const container = createElement('div', { className: 'score-container' });
+export function renderWritingProfile(profile) {
+  const container = createElement('div', { className: 'profile-container' });
 
-  // Gauge
-  const percent = score.total;
-  const color = percent >= 75 ? 'var(--color-success)'
-    : percent >= 50 ? '#eab308'
-    : percent >= 25 ? 'var(--color-warning)'
-    : 'var(--color-danger)';
-
-  const gauge = createElement('div', { className: 'score-gauge' });
-  gauge.style.background = `conic-gradient(${color} ${percent * 3.6}deg, var(--color-gray-100) 0deg)`;
-
-  const inner = createElement('div', { className: 'score-gauge-inner' });
-  inner.appendChild(createElement('div', { className: 'score-value', textContent: String(percent) }));
-  inner.appendChild(createElement('div', { className: 'score-label', textContent: 'out of 100' }));
-  gauge.appendChild(inner);
-  container.appendChild(gauge);
-
-  // Interpretation
-  container.appendChild(createElement('p', {
-    className: 'score-interpretation',
-    textContent: score.interpretation,
-  }));
-
-  // Breakdown
-  const breakdown = createElement('div', { className: 'score-breakdown' });
-  const metrics = [
-    { name: 'Non-linearity', value: score.breakdown.nonLinearity, max: 30, desc: 'Cursor movement and editing pattern' },
-    { name: 'Revision intensity', value: score.breakdown.revision, max: 25, desc: 'Deletion and rewriting frequency' },
-    { name: 'Pause variability', value: score.breakdown.pauseVariability, max: 25, desc: 'Variation in typing rhythm' },
-    { name: 'Paste analysis', value: score.breakdown.pasteAnalysis, max: 20, desc: 'Amount of pasted content' },
-  ];
-
-  for (const m of metrics) {
-    const pct = (m.value / m.max) * 100;
-    const barColor = pct >= 75 ? 'score-bar-green'
-      : pct >= 50 ? 'score-bar-yellow'
-      : pct >= 25 ? 'score-bar-orange'
-      : 'score-bar-red';
-
-    const metric = createElement('div', { className: 'score-metric' });
-
-    const header = createElement('div', { className: 'score-metric-header' });
-    header.appendChild(createElement('span', { className: 'score-metric-name', textContent: m.name }));
-    header.appendChild(createElement('span', { className: 'score-metric-value', textContent: `${m.value} / ${m.max}` }));
-    metric.appendChild(header);
-
-    const bar = createElement('div', { className: 'score-bar' });
-    const fill = createElement('div', { className: `score-bar-fill ${barColor}` });
-    fill.style.width = `${pct}%`;
-    bar.appendChild(fill);
-    metric.appendChild(bar);
-
-    metric.appendChild(createElement('div', { className: 'score-metric-desc', textContent: m.desc }));
-    breakdown.appendChild(metric);
+  if (!profile) {
+    container.appendChild(createElement('p', {
+      className: 'text-muted text-center',
+      textContent: 'Not enough data to generate a writing profile.',
+    }));
+    return container;
   }
-  container.appendChild(breakdown);
 
-  // Statistics table
-  if (stats) {
-    const statsSection = createElement('div', { className: 'score-stats' });
+  // Helper to build a stats table
+  function buildTable(rows) {
     const table = document.createElement('table');
-    const rows = [
-      ['Total keystrokes', formatNumber(stats.totalKeystrokes)],
-      ['Insertions', formatNumber(stats.insertions)],
-      ['Deletions', formatNumber(stats.deletions)],
-      ['Pastes', formatNumber(stats.pastes)],
-      ['Average typing speed', `${stats.wpm} WPM`],
-      ['Session duration', stats.duration],
-      ['Hash checkpoints', `${formatNumber(stats.checkpoints)} (${stats.checkpointsValid ? 'all valid' : 'some invalid'})`],
-    ];
+    table.className = 'profile-table';
     for (const [label, value] of rows) {
       const tr = document.createElement('tr');
       tr.innerHTML = `<td>${label}</td><td>${value}</td>`;
       table.appendChild(tr);
     }
-    statsSection.appendChild(table);
-    container.appendChild(statsSection);
+    return table;
   }
+
+  // --- Composition Stats ---
+  const comp = profile.composition;
+  const compSection = createElement('div', { className: 'profile-section' });
+  compSection.appendChild(createElement('h4', { className: 'profile-section-title', textContent: 'Composition' }));
+  compSection.appendChild(buildTable([
+    ['Total keystrokes', formatNumber(comp.totalKeystrokes)],
+    ['Word count', formatNumber(comp.wordCount)],
+    ['Character count', formatNumber(comp.characterCount)],
+    ['Insertions', formatNumber(comp.insertions)],
+    ['Deletions', formatNumber(comp.deletions)],
+    ['Pastes', formatNumber(comp.pastes)],
+  ]));
+  container.appendChild(compSection);
+
+  // --- Pasting Behavior ---
+  const paste = profile.pasting;
+  const pasteSection = createElement('div', { className: 'profile-section' });
+  pasteSection.appendChild(createElement('h4', { className: 'profile-section-title', textContent: 'Pasting Behavior' }));
+  pasteSection.appendChild(buildTable([
+    ['Paste events', formatNumber(paste.pasteCount)],
+    ['Characters pasted', formatNumber(paste.totalCharsPasted)],
+    ['Pasted content', `${paste.pastePercent}% of final text`],
+    ['Largest single paste', `${formatNumber(paste.largestPaste)} chars`],
+  ]));
+  container.appendChild(pasteSection);
+
+  // --- Editing Pattern ---
+  const editing = profile.editing;
+  const editSection = createElement('div', { className: 'profile-section' });
+  editSection.appendChild(createElement('h4', { className: 'profile-section-title', textContent: 'Editing Pattern' }));
+  editSection.appendChild(buildTable([
+    ['Deletion ratio', `${editing.deletionRatio} deletions per insertion`],
+    ['Local edits', `${editing.localEditPercent}% near previous position`],
+    ['Non-local edits', `${editing.farEditPercent}% away from previous position`],
+  ]));
+  container.appendChild(editSection);
+
+  // --- Timing Profile ---
+  const timing = profile.timing;
+  const timeSection = createElement('div', { className: 'profile-section' });
+  timeSection.appendChild(createElement('h4', { className: 'profile-section-title', textContent: 'Timing Profile' }));
+  timeSection.appendChild(buildTable([
+    ['Median interval', `${formatNumber(timing.medianIntervalMs)} ms`],
+    ['Longest pause', formatTime(timing.longestPauseMs)],
+    ['Pauses over 30s', formatNumber(timing.pausesOver30s)],
+  ]));
+  container.appendChild(timeSection);
 
   return container;
 }
