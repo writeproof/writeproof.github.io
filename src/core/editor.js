@@ -121,8 +121,10 @@ export class Editor {
     }
   }
 
-  save() {
+  async save() {
     if (!this._doc) return false;
+    // Wait for any pending hash computations so chainHash is consistent
+    if (this._recorder) await this._recorder.hashReady;
     this._doc.lastModified = new Date().toISOString();
     // Extract current links from the editor DOM
     const { links } = extractContentAndLinks(this._textarea);

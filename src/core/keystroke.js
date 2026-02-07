@@ -261,6 +261,10 @@ export class KeystrokeRecorder {
     });
   }
 
+  get hashReady() {
+    return this._hashQueue;
+  }
+
   resetSessionStart() {
     this._sessionStart = performance.now();
   }
