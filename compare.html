@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WriteProof - Compare Documents</title>
+  <meta name="description" content="Compare multiple WriteProof documents side-by-side on a scatter plot to identify writing pattern differences.">
+  <link rel="icon" href="assets/logo.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="assets/styles.css">
+</head>
+<body>
+  <div class="compare-layout">
+
+    <!-- Navbar -->
+    <nav class="navbar">
+      <a href="/" class="navbar-brand">
+        <img src="assets/logo.svg" alt="WriteProof" width="32" height="32">
+        WriteProof
+      </a>
+      <ul class="navbar-links">
+        <li><a href="/">Editor</a></li>
+        <li><a href="verify.html">Verify</a></li>
+        <li><a href="docs.html">Docs</a></li>
+        <li><a href="about.html">About</a></li>
+      </ul>
+    </nav>
+
+    <!-- Body -->
+    <div class="compare-body">
+
+      <!-- Sidebar -->
+      <aside class="compare-sidebar">
+
+        <!-- Import -->
+        <div class="compare-sidebar-section">
+          <div class="compare-sidebar-title">Import</div>
+          <div id="compare-drop-zone" class="compare-drop-zone" role="button" tabindex="0" aria-label="Click or drop files to import">
+            <p style="font-weight: 600; margin-bottom: 0.25rem;">Drop .json files here</p>
+            <p class="text-xs">or click to browse</p>
+            <input type="file" id="compare-file-input" accept=".json,.writeproof.json" multiple>
+          </div>
+        </div>
+
+        <!-- Documents -->
+        <div class="compare-sidebar-section" style="flex: 1; overflow-y: auto;">
+          <div class="compare-sidebar-title">Documents</div>
+          <ul id="compare-doc-list" class="compare-doc-list"></ul>
+        </div>
+
+        <!-- Axes -->
+        <div class="compare-sidebar-section">
+          <div class="compare-sidebar-title">Axes</div>
+          <div class="compare-axis-group">
+            <label class="compare-axis-label" for="x-axis-select">X Axis</label>
+            <select id="x-axis-select" class="compare-axis-select"></select>
+          </div>
+          <div class="compare-axis-group">
+            <label class="compare-axis-label" for="y-axis-select">Y Axis</label>
+            <select id="y-axis-select" class="compare-axis-select"></select>
+          </div>
+        </div>
+
+      </aside>
+
+      <!-- Chart Area -->
+      <div class="compare-chart-area" id="chart-container">
+        <canvas id="compare-canvas"></canvas>
+        <div id="compare-empty" class="compare-empty">Import documents to start comparing</div>
+      </div>
+
+    </div>
+  </div>
+
+  <script type="module" src="src/compare-main.js"></script>
+</body>
+</html>
