@@ -11,9 +11,11 @@ WriteProof records every keystroke with microsecond-precision timestamps and bui
 - Distraction-free editor with real-time word/character counts
 - Keystroke recording with SHA-256 hash chain
 - Writing session replay at configurable speeds
-- Authenticity score based on behavioral analysis
+- Writing profile based on behavioral analysis
+- Multi-document comparison via scatter plots
 - Share via URL or export as JSON
 - Link support for citing sources (Ctrl+K)
+- Multi-tab conflict detection
 - 100% client-side -- no servers, no accounts, no data collection
 
 ## Getting Started
@@ -41,6 +43,7 @@ python3 -m http.server 8000
 |------|-------------|
 | `index.html` | Main editor |
 | `verify.html` | Replay and verify documents |
+| `compare.html` | Multi-document scatter plot comparison |
 | `docs.html` | Documentation |
 | `about.html` | About the project |
 | `privacy.html` | Privacy policy |
@@ -52,37 +55,52 @@ python3 -m http.server 8000
   /core
     editor.js        -- Editor lifecycle and document management
     keystroke.js     -- Keystroke recording and classification
-    hashing.js       -- SHA-256 hash generation and verification
+    hashing.js       -- SHA-256 hash generation, verification, and checkpoints
     storage.js       -- localStorage persistence
   /features
     replay.js        -- Replay engine with playback controls
-    analytics.js     -- Authenticity score calculation
+    analytics.js     -- Writing profile calculation
+    dimensions.js    -- Scatter plot dimension computation
     export.js        -- Export, import, and URL sharing
   /ui
     components.js    -- Notifications, modals
-    views.js         -- Document list, score display
+    views.js         -- Document list, profile display
+    chart.js         -- Canvas-based scatter plot renderer
+    link-dialog.js   -- Link popup and dialog management
+    welcome.js       -- First-visit welcome panel
   /utils
-    helpers.js       -- Formatting, UUID generation
+    helpers.js       -- Formatting, UUID generation, error boundaries
     caret.js         -- Contenteditable DOM-to-text bridge
+  /workers
+    hash-worker.js   -- Web Worker for off-thread hash computation
   /vendor
     lz-string.min.js -- Compression for URL sharing
   main.js            -- Editor entry point
   verify-main.js     -- Verify page entry point
+  compare-main.js    -- Compare page entry point
 /assets
   styles.css         -- Design system and all styles
   logo.svg           -- Logo
 ```
 
-## Authenticity Score
+## Writing Profile
 
-The score (0--100) evaluates how human-like the writing pattern is:
+The writing profile analyzes behavioral patterns to assess authenticity:
 
-| Metric | Points | What It Measures |
-|--------|--------|------------------|
-| Non-linearity | 0--30 | Cursor jumps, out-of-order edits |
-| Revision intensity | 0--25 | Deletion/rewriting frequency |
-| Pause variability | 0--25 | Variation in typing rhythm |
-| Paste analysis | 0--20 | Penalty for large paste operations |
+| Metric | What It Measures |
+|--------|------------------|
+| Composition | Keystroke counts, insertions, deletions, pastes |
+| Pasting behavior | Paste frequency, pasted content percentage, largest paste |
+| Editing patterns | Deletion ratio, edit locality (near vs. far edits) |
+| Timing | Median interval, longest pause, pause frequency |
+
+## Architecture Highlights
+
+- **Text-diff keystroke recording** -- Compares before/after text instead of relying on `inputType`, making it robust against autocorrect, spellcheck, IME, and undo/redo.
+- **Async hash queue** -- SHA-256 hashing runs asynchronously to avoid blocking the UI. Save waits for the queue to stabilize before persisting.
+- **Web Worker verification** -- Hash chain verification runs in a dedicated Web Worker to keep the main thread responsive for large documents. Falls back to main-thread computation if workers are unavailable.
+- **Incremental checkpoints** -- Content and hash state are checkpointed every 1000 events, allowing verification to resume from the nearest checkpoint instead of replaying from the beginning.
+- **Error boundaries** -- All event handlers are wrapped to prevent a single error from crashing the editor.
 
 ## Privacy
 
