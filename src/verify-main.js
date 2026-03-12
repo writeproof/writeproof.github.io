@@ -27,6 +27,8 @@ const statusTime = document.getElementById('status-time');
 const statusKeystroke = document.getElementById('status-keystroke');
 const statusHash = document.getElementById('status-hash');
 const scoreSection = document.getElementById('score-section');
+const eventTypeBadge = document.getElementById('event-type-badge');
+const eventContentEl = document.getElementById('event-content');
 
 let engine = null;
 let currentDoc = null;
@@ -89,9 +91,51 @@ function loadDoc(doc) {
   replayTextarea.textContent = '';
 }
 
-function handleProgress({ index, total, content, position, timestamp }) {
-  replayTextarea.textContent = content;
+function formatEventContent(event) {
+  if (!event) return 'Waiting...';
+  const c = event.c || '';
+  switch (event.y) {
+    case 'i': return c.length === 1 ? displayKey(c) : `"${truncate(c, 20)}"`;
+    case 'd': return `\u232b "${truncate(c, 18)}"`;
+    case 'p': return `"${truncate(c, 20)}"`;
+    case 'm': return `pos ${event.p}`;
+    default:  return '';
+  }
+}
 
+function displayKey(ch) {
+  if (ch === ' ') return '\u2423';        // open box ␣
+  if (ch === '\n') return '\u23ce';       // return ⏎
+  if (ch === '\t') return '\u21e5';       // tab ⇥
+  return `"${ch}"`;
+}
+
+function truncate(str, max) {
+  return str.length > max ? str.slice(0, max) + '\u2026' : str;
+}
+
+const EVENT_LABELS = { i: 'Insert', d: 'Delete', p: 'Paste', m: 'Move' };
+const EVENT_CLASSES = { i: 'evt-insert', d: 'evt-delete', p: 'evt-paste', m: 'evt-move' };
+
+let _flashTimer = null;
+
+function updateEventIndicator(event) {
+  if (!event) return;
+  const label = EVENT_LABELS[event.y] || event.y;
+  const cls = EVENT_CLASSES[event.y] || '';
+
+  eventTypeBadge.textContent = label;
+  eventTypeBadge.className = `event-badge ${cls} evt-flash`;
+  eventContentEl.textContent = formatEventContent(event);
+
+  clearTimeout(_flashTimer);
+  _flashTimer = setTimeout(() => {
+    eventTypeBadge.classList.remove('evt-flash');
+  }, 120);
+}
+
+function handleProgress({ index, total, content, position, timestamp, event }) {
+  replayTextarea.textContent = content;
   replayTextarea.scrollTop = replayTextarea.scrollHeight;
 
   const pct = (index / total) * 100;
@@ -100,6 +144,8 @@ function handleProgress({ index, total, content, position, timestamp }) {
   progressLabel.textContent = `${formatNumber(index)} / ${formatNumber(total)}`;
   statusKeystroke.textContent = `${formatNumber(index)} / ${formatNumber(total)}`;
   statusTime.textContent = formatTime(timestamp);
+
+  updateEventIndicator(event);
 }
 
 function handleComplete() {
@@ -199,6 +245,9 @@ document.getElementById('btn-back').addEventListener('click', () => {
   progressFill.style.width = '0%';
   statusHash.textContent = 'Not Verified';
   statusHash.className = 'badge badge-info';
+  eventTypeBadge.textContent = '--';
+  eventTypeBadge.className = 'event-badge';
+  eventContentEl.textContent = 'Waiting...';
 });
 
 // --- Auto-load from URL params ---
