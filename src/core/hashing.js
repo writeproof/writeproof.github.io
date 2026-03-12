@@ -1,5 +1,40 @@
 // SHA-256 hashing and event hash chain for WriteProof
 
+let _worker = null;
+let _msgId = 0;
+
+function getWorker() {
+  if (!_worker) {
+    try {
+      const workerUrl = new URL('../workers/hash-worker.js', import.meta.url);
+      _worker = new Worker(workerUrl, { type: 'module' });
+    } catch {
+      // Worker creation may fail in some environments
+      _worker = null;
+    }
+  }
+  return _worker;
+}
+
+function postToWorker(msg) {
+  return new Promise((resolve, reject) => {
+    const worker = getWorker();
+    if (!worker) {
+      reject(new Error('Worker not available'));
+      return;
+    }
+    const id = ++_msgId;
+    const handler = (e) => {
+      if (e.data.id === id) {
+        worker.removeEventListener('message', handler);
+        resolve(e.data);
+      }
+    };
+    worker.addEventListener('message', handler);
+    worker.postMessage({ ...msg, id });
+  });
+}
+
 export async function generateContentHash(content) {
   if (typeof crypto !== 'undefined' && crypto.subtle) {
     const encoder = new TextEncoder();
@@ -27,7 +62,54 @@ export async function computeEventHash(prevHash, event) {
   return generateContentHash(data);
 }
 
+// Checkpoint interval — store content + hash state every N events
+const CHECKPOINT_INTERVAL = 1000;
+
+// Build checkpoints for a document's keystroke log.
+// Each checkpoint stores { index, content, hash } at every CHECKPOINT_INTERVAL events.
+// Stored on doc.checkpoints for reuse across verification calls.
+export async function buildCheckpoints(doc) {
+  const { insertAt, deleteAt } = await import('../utils/helpers.js');
+  const checkpoints = [];
+  let content = '';
+  let hash = '0';
+
+  for (let i = 0; i < doc.keystrokeLog.length; i++) {
+    const event = doc.keystrokeLog[i];
+    if (event.y === 'i' || event.y === 'p') {
+      content = insertAt(content, event.p, event.c);
+    } else if (event.y === 'd') {
+      content = deleteAt(content, event.p, event.c.length);
+    }
+    hash = await computeEventHash(hash, event);
+
+    if ((i + 1) % CHECKPOINT_INTERVAL === 0) {
+      checkpoints.push({ index: i + 1, content, hash });
+    }
+  }
+
+  doc.checkpoints = checkpoints;
+  return checkpoints;
+}
+
 export async function verifyDocument(doc) {
+  // Try worker-based verification first (non-blocking)
+  try {
+    const result = await postToWorker({
+      type: 'verify',
+      keystrokeLog: doc.keystrokeLog,
+      chainHash: doc.chainHash,
+      content: doc.content,
+    });
+    return result.result;
+  } catch {
+    // Fall back to main-thread verification
+  }
+
+  return verifyDocumentMainThread(doc);
+}
+
+async function verifyDocumentMainThread(doc) {
   const { insertAt, deleteAt } = await import('../utils/helpers.js');
 
   if (!doc.keystrokeLog || doc.keystrokeLog.length === 0) {
@@ -39,18 +121,28 @@ export async function verifyDocument(doc) {
     };
   }
 
-  // Replay all events and recompute hash chain
+  // Use the latest valid checkpoint to skip already-verified events
+  let startIndex = 0;
   let replayContent = '';
   let prevHash = '0';
 
-  for (const event of doc.keystrokeLog) {
+  if (doc.checkpoints && doc.checkpoints.length > 0) {
+    const cp = doc.checkpoints[doc.checkpoints.length - 1];
+    if (cp.index <= doc.keystrokeLog.length) {
+      startIndex = cp.index;
+      replayContent = cp.content;
+      prevHash = cp.hash;
+    }
+  }
+
+  // Replay remaining events from checkpoint
+  for (let i = startIndex; i < doc.keystrokeLog.length; i++) {
+    const event = doc.keystrokeLog[i];
     if (event.y === 'i' || event.y === 'p') {
       replayContent = insertAt(replayContent, event.p, event.c);
     } else if (event.y === 'd') {
       replayContent = deleteAt(replayContent, event.p, event.c.length);
     }
-    // 'm' events don't affect content
-
     prevHash = await computeEventHash(prevHash, event);
   }
 

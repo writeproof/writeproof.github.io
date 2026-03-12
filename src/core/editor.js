@@ -4,6 +4,7 @@ import { generateUUID, countWords, formatTime } from '../utils/helpers.js';
 import { renderContentWithLinks, extractContentAndLinks } from '../utils/caret.js';
 import { KeystrokeRecorder } from './keystroke.js';
 import { saveDocument, loadDocument } from './storage.js';
+import { buildCheckpoints } from './hashing.js';
 
 export class Editor {
   constructor(textarea, options = {}) {
@@ -15,6 +16,7 @@ export class Editor {
     this._sessionStart = null;
     this._dirty = false;
     this._onUpdate = options.onUpdate || null;
+    this._onSaveError = options.onSaveError || null;
     this._autoSaveInterval = options.autoSaveInterval || 5000;
   }
 
@@ -128,7 +130,8 @@ export class Editor {
     if (this._recorder) {
       let ready = this._recorder.hashReady;
       await ready;
-      while (this._recorder.hashReady !== ready) {
+      let attempts = 0;
+      while (this._recorder.hashReady !== ready && attempts++ < 20) {
         ready = this._recorder.hashReady;
         await ready;
       }
@@ -138,8 +141,14 @@ export class Editor {
     const { links } = extractContentAndLinks(this._textarea);
     this._doc.links = links;
     this._updateMetadata();
+    // Build verification checkpoints if log has grown past existing ones
+    this._maybeUpdateCheckpoints();
     const ok = saveDocument(this._doc);
-    if (ok) this._dirty = false;
+    if (ok) {
+      this._dirty = false;
+    } else if (this._onSaveError) {
+      this._onSaveError('Storage full. Export your document to avoid data loss.');
+    }
     this._emitUpdate();
     return ok;
   }
@@ -182,6 +191,17 @@ export class Editor {
       lastModified: this._doc.lastModified,
       isDirty: this._dirty,
     };
+  }
+
+  _maybeUpdateCheckpoints() {
+    if (!this._doc) return;
+    const log = this._doc.keystrokeLog;
+    const existing = this._doc.checkpoints || [];
+    const lastCpIndex = existing.length > 0 ? existing[existing.length - 1].index : 0;
+    // Only rebuild if we've accumulated 1000+ new events past the last checkpoint
+    if (log.length - lastCpIndex >= 1000) {
+      buildCheckpoints(this._doc).catch(() => {});
+    }
   }
 
   getDocument() {

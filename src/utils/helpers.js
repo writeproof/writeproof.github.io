@@ -50,6 +50,16 @@ export function deleteAt(str, position, length = 1) {
   return str.slice(0, position) + str.slice(position + length);
 }
 
+export function safe(fn) {
+  return (...args) => {
+    try {
+      return fn(...args);
+    } catch (err) {
+      console.error('[WriteProof]', err);
+    }
+  };
+}
+
 export function timeSince(date) {
   const seconds = Math.floor((Date.now() - new Date(date).getTime()) / 1000);
   if (seconds < 5) return 'just now';

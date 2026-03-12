@@ -6,7 +6,9 @@ import { exportToJSON, importFromJSON } from './features/export.js';
 import { analyzeWritingProfile } from './features/analytics.js';
 import { showNotification, showModal } from './ui/components.js';
 import { renderDocumentList, renderWritingProfile } from './ui/views.js';
-import { formatNumber, formatTime, countWords } from './utils/helpers.js';
+import { initLinkFeature } from './ui/link-dialog.js';
+import { initWelcome } from './ui/welcome.js';
+import { formatNumber, formatTime, countWords, safe } from './utils/helpers.js';
 import { getSelectionOffsets, setCaretOffset, getTextContent } from './utils/caret.js';
 
 // Check crypto availability
@@ -23,20 +25,6 @@ const sessionTimeEl = document.getElementById('session-time');
 const saveStatusEl = document.getElementById('save-status');
 const fileInput = document.getElementById('file-input');
 
-// Link UI elements
-const linkPopup = document.getElementById('link-popup');
-const linkPopupOpen = document.getElementById('link-popup-open');
-const linkPopupEdit = document.getElementById('link-popup-edit');
-const linkPopupRemove = document.getElementById('link-popup-remove');
-const linkDialogBackdrop = document.getElementById('link-dialog-backdrop');
-const linkDialogTitle = document.getElementById('link-dialog-title');
-const linkTextGroup = document.getElementById('link-text-group');
-const linkTextInput = document.getElementById('link-text-input');
-const linkUrlInput = document.getElementById('link-url-input');
-const linkDialogSave = document.getElementById('link-dialog-save');
-const linkDialogCancel = document.getElementById('link-dialog-cancel');
-const linkDialogClose = document.getElementById('link-dialog-close');
-
 // Initialize editor
 const editor = new Editor(textarea, {
   onUpdate: (state) => {
@@ -47,6 +35,9 @@ const editor = new Editor(textarea, {
     saveStatusEl.textContent = state.isDirty ? 'Unsaved changes' : 'Saved';
     saveStatusEl.style.color = state.isDirty ? 'var(--color-warning)' : 'var(--color-gray-400)';
   },
+  onSaveError: (msg) => {
+    showNotification(msg, 'error', 8000);
+  },
 });
 
 // --- Placeholder handling ---
@@ -55,15 +46,33 @@ function updatePlaceholder() {
   textarea.classList.toggle('is-empty', text.length === 0);
 }
 
-textarea.addEventListener('input', updatePlaceholder);
-textarea.addEventListener('focus', updatePlaceholder);
-textarea.addEventListener('blur', updatePlaceholder);
+textarea.addEventListener('input', safe(updatePlaceholder));
+textarea.addEventListener('focus', safe(updatePlaceholder));
+textarea.addEventListener('blur', safe(updatePlaceholder));
 
 // --- Enter key override: insert <br> instead of <div> ---
 textarea.addEventListener('keydown', (e) => {
   if (e.key === 'Enter' && !e.shiftKey) {
     e.preventDefault();
-    document.execCommand('insertLineBreak');
+    // Try execCommand first; fall back to manual BR insertion
+    if (!document.execCommand('insertLineBreak')) {
+      const sel = window.getSelection();
+      if (sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const br = document.createElement('br');
+        range.insertNode(br);
+        range.setStartAfter(br);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        textarea.dispatchEvent(new InputEvent('input', {
+          inputType: 'insertLineBreak',
+          bubbles: true,
+          cancelable: false,
+        }));
+      }
+    }
   }
 });
 
@@ -175,7 +184,7 @@ document.getElementById('btn-import').addEventListener('click', () => {
   fileInput.click();
 });
 
-fileInput.addEventListener('change', async (e) => {
+fileInput.addEventListener('change', safe(async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
@@ -189,7 +198,7 @@ fileInput.addEventListener('change', async (e) => {
     showNotification(err.message, 'error');
   }
   fileInput.value = '';
-});
+}));
 
 // Replay
 document.getElementById('btn-replay').addEventListener('click', async () => {
@@ -235,280 +244,19 @@ document.addEventListener('visibilitychange', async () => {
   if (document.hidden) await editor.save();
 });
 
-// Welcome panel
-const welcomeBackdrop = document.getElementById('welcome-backdrop');
-
-function openWelcome() {
-  welcomeBackdrop.style.display = 'flex';
-}
-
-function closeWelcome() {
-  welcomeBackdrop.style.display = 'none';
-  localStorage.setItem('writeproof_welcomed', '1');
-}
-
-document.getElementById('btn-info').addEventListener('click', openWelcome);
-document.getElementById('btn-start-writing').addEventListener('click', closeWelcome);
-
-welcomeBackdrop.addEventListener('click', (e) => {
-  if (e.target === welcomeBackdrop) closeWelcome();
-});
-
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && welcomeBackdrop.style.display !== 'none') {
-    closeWelcome();
+// Multi-tab conflict detection
+window.addEventListener('storage', (e) => {
+  if (e.key === 'writeproof_docs') {
+    showNotification('Document modified in another tab. Reload to see changes.', 'warning', 6000);
   }
-});
-
-// === Link Feature ===
-
-let activeLinkEl = null; // The <a> element currently being edited/popped
-let linkDialogMode = null; // 'insert-text', 'insert-selection', 'edit'
-let savedSelection = null; // Saved selection range for restoring after dialog
-
-function normalizeUrl(url) {
-  url = url.trim();
-  if (!url) return '';
-  if (!/^https?:\/\//i.test(url) && !/^mailto:/i.test(url)) {
-    url = 'https://' + url;
-  }
-  return url;
-}
-
-function saveSelection() {
-  const sel = window.getSelection();
-  if (sel.rangeCount > 0) {
-    savedSelection = sel.getRangeAt(0).cloneRange();
-  }
-}
-
-function restoreSelection() {
-  if (!savedSelection) return;
-  const sel = window.getSelection();
-  sel.removeAllRanges();
-  sel.addRange(savedSelection);
-  savedSelection = null;
-}
-
-function openLinkDialog(mode, existingUrl) {
-  linkDialogMode = mode;
-  linkTextInput.value = '';
-  linkUrlInput.value = existingUrl || '';
-
-  if (mode === 'insert-text') {
-    // No selection: show text + URL fields
-    linkTextGroup.style.display = '';
-    linkDialogTitle.textContent = 'Insert Link';
-    linkDialogSave.textContent = 'Insert';
-  } else if (mode === 'insert-selection') {
-    // Has selection: URL only
-    linkTextGroup.style.display = 'none';
-    linkDialogTitle.textContent = 'Insert Link';
-    linkDialogSave.textContent = 'Insert';
-  } else if (mode === 'edit') {
-    // Editing existing link: URL only
-    linkTextGroup.style.display = 'none';
-    linkDialogTitle.textContent = 'Edit Link';
-    linkDialogSave.textContent = 'Save';
-  }
-
-  linkDialogBackdrop.style.display = 'flex';
-  linkUrlInput.focus();
-}
-
-function closeLinkDialog() {
-  linkDialogBackdrop.style.display = 'none';
-  linkTextInput.value = '';
-  linkUrlInput.value = '';
-  linkDialogMode = null;
-  activeLinkEl = null;
-}
-
-function handleLinkDialogSubmit() {
-  const url = normalizeUrl(linkUrlInput.value);
-  if (!url) {
-    linkUrlInput.focus();
-    return;
-  }
-
-  if (linkDialogMode === 'edit' && activeLinkEl) {
-    editor.editLink(activeLinkEl, url);
-    closeLinkDialog();
-    return;
-  }
-
-  if (linkDialogMode === 'insert-selection') {
-    restoreSelection();
-    // Wrap the current selection in a link
-    const sel = window.getSelection();
-    if (sel.rangeCount > 0 && !sel.isCollapsed) {
-      const range = sel.getRangeAt(0);
-      const a = document.createElement('a');
-      a.href = url;
-      a.className = 'editor-link';
-      a.contentEditable = 'false';
-      a.target = '_blank';
-      a.rel = 'noopener';
-      try {
-        range.surroundContents(a);
-      } catch (_) {
-        // If surroundContents fails (partial selection across nodes), fallback
-        a.textContent = sel.toString();
-        range.deleteContents();
-        range.insertNode(a);
-      }
-      sel.removeAllRanges();
-      // Place caret after the link
-      const afterRange = document.createRange();
-      afterRange.setStartAfter(a);
-      afterRange.collapse(true);
-      sel.addRange(afterRange);
-    }
-    closeLinkDialog();
-    return;
-  }
-
-  if (linkDialogMode === 'insert-text') {
-    const text = linkTextInput.value.trim() || url;
-    restoreSelection();
-    // Insert the link at current caret position
-    const a = document.createElement('a');
-    a.href = url;
-    a.className = 'editor-link';
-    a.contentEditable = 'false';
-    a.target = '_blank';
-    a.rel = 'noopener';
-    a.textContent = text;
-
-    const sel = window.getSelection();
-    if (sel.rangeCount > 0) {
-      const range = sel.getRangeAt(0);
-      range.deleteContents();
-      range.insertNode(a);
-      // Place caret after the link
-      const afterRange = document.createRange();
-      afterRange.setStartAfter(a);
-      afterRange.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(afterRange);
-    } else {
-      textarea.appendChild(a);
-    }
-    closeLinkDialog();
-    return;
-  }
-
-  closeLinkDialog();
-}
-
-// Link button
-document.getElementById('btn-link').addEventListener('click', () => {
-  textarea.focus();
-  saveSelection();
-  const offsets = getSelectionOffsets(textarea);
-  if (offsets.start !== offsets.end) {
-    openLinkDialog('insert-selection');
-  } else {
-    openLinkDialog('insert-text');
-  }
-});
-
-// Ctrl+K shortcut
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-    e.preventDefault();
-    document.getElementById('btn-link').click();
-  }
-});
-
-// Link dialog events
-linkDialogSave.addEventListener('click', handleLinkDialogSubmit);
-linkDialogCancel.addEventListener('click', closeLinkDialog);
-linkDialogClose.addEventListener('click', closeLinkDialog);
-
-linkDialogBackdrop.addEventListener('click', (e) => {
-  if (e.target === linkDialogBackdrop) closeLinkDialog();
-});
-
-linkUrlInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    handleLinkDialogSubmit();
-  }
-});
-
-linkTextInput.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    e.preventDefault();
-    linkUrlInput.focus();
-  }
-});
-
-// --- Link popup (click on link) ---
-
-function showLinkPopup(linkEl) {
-  activeLinkEl = linkEl;
-  const rect = linkEl.getBoundingClientRect();
-  linkPopup.style.display = 'flex';
-  linkPopup.style.left = `${rect.left + rect.width / 2}px`;
-  linkPopup.style.top = `${rect.top - 8}px`;
-}
-
-function hideLinkPopup() {
-  linkPopup.style.display = 'none';
-  activeLinkEl = null;
-}
-
-textarea.addEventListener('click', (e) => {
-  const linkEl = e.target.closest('a.editor-link');
-  if (linkEl) {
-    e.preventDefault();
-    showLinkPopup(linkEl);
-  } else {
-    hideLinkPopup();
-  }
-});
-
-// Dismiss popup on scroll or click outside
-document.addEventListener('click', (e) => {
-  if (linkPopup.style.display === 'none') return;
-  if (linkPopup.contains(e.target)) return;
-  if (e.target.closest && e.target.closest('a.editor-link')) return;
-  hideLinkPopup();
-});
-
-document.addEventListener('scroll', hideLinkPopup, true);
-
-// Popup actions
-linkPopupOpen.addEventListener('click', () => {
-  if (activeLinkEl) {
-    window.open(activeLinkEl.href, '_blank', 'noopener');
-  }
-  hideLinkPopup();
-});
-
-linkPopupEdit.addEventListener('click', () => {
-  if (activeLinkEl) {
-    const url = activeLinkEl.getAttribute('href') || '';
-    openLinkDialog('edit', url);
-  }
-  hideLinkPopup();
-});
-
-linkPopupRemove.addEventListener('click', () => {
-  if (activeLinkEl) {
-    editor.removeLink(activeLinkEl);
-  }
-  hideLinkPopup();
 });
 
 // --- Init ---
 
 try {
   init();
-  if (!localStorage.getItem('writeproof_welcomed')) {
-    openWelcome();
-  }
+  initLinkFeature(textarea, editor);
+  initWelcome();
   console.log('[WriteProof] Editor initialized');
 } catch (err) {
   console.error('[WriteProof] Failed to initialize:', err);

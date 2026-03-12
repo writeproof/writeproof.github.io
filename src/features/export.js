@@ -56,6 +56,26 @@ function validateImport(data) {
     throw new Error('Missing or invalid keystrokeLog');
   }
 
+  // Validate individual keystroke events
+  for (let i = 0; i < data.keystrokeLog.length; i++) {
+    const evt = data.keystrokeLog[i];
+    if (!evt || typeof evt !== 'object') {
+      throw new Error(`Invalid keystroke event at index ${i}`);
+    }
+    if (typeof evt.t !== 'number' || typeof evt.y !== 'string') {
+      throw new Error(`Invalid keystroke event at index ${i}: missing t or y`);
+    }
+    if ((evt.y === 'i' || evt.y === 'd' || evt.y === 'p') && typeof evt.p !== 'number') {
+      throw new Error(`Invalid keystroke event at index ${i}: missing position`);
+    }
+    if ((evt.y === 'i' || evt.y === 'd' || evt.y === 'p') && typeof evt.c !== 'string') {
+      throw new Error(`Invalid keystroke event at index ${i}: missing content`);
+    }
+    if (evt.y === 'm' && typeof evt.p !== 'number') {
+      throw new Error(`Invalid keystroke event at index ${i}: move missing position`);
+    }
+  }
+
   // Normalize to full document structure
   return {
     id: data.id,

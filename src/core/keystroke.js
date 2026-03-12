@@ -2,6 +2,7 @@
 
 import { computeEventHash } from './hashing.js';
 import { getTextContent, getSelectionOffsets } from '../utils/caret.js';
+import { safe } from '../utils/helpers.js';
 
 const NAV_KEYS = new Set([
   'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight',
@@ -21,12 +22,12 @@ export class KeystrokeRecorder {
     this._hashQueue = Promise.resolve();
     this._prevHash = doc.chainHash || '0';
 
-    this._handleInput = this._handleInput.bind(this);
-    this._handleBeforeInput = this._handleBeforeInput.bind(this);
-    this._handleSelect = this._handleSelect.bind(this);
-    this._handlePaste = this._handlePaste.bind(this);
-    this._handleMouseUp = this._handleMouseUp.bind(this);
-    this._handleKeyUp = this._handleKeyUp.bind(this);
+    this._handleInput = safe(this._handleInput.bind(this));
+    this._handleBeforeInput = safe(this._handleBeforeInput.bind(this));
+    this._handleSelect = safe(this._handleSelect.bind(this));
+    this._handlePaste = safe(this._handlePaste.bind(this));
+    this._handleMouseUp = safe(this._handleMouseUp.bind(this));
+    this._handleKeyUp = safe(this._handleKeyUp.bind(this));
   }
 
   start() {
@@ -67,7 +68,28 @@ export class KeystrokeRecorder {
     e.preventDefault();
     const text = (e.clipboardData || window.clipboardData).getData('text/plain');
     this._isPaste = true;
-    document.execCommand('insertText', false, text);
+
+    // Try execCommand first (widely supported despite deprecation).
+    // Fall back to manual DOM insertion + synthetic input event.
+    if (!document.execCommand('insertText', false, text)) {
+      const sel = window.getSelection();
+      if (sel.rangeCount > 0) {
+        const range = sel.getRangeAt(0);
+        range.deleteContents();
+        const textNode = document.createTextNode(text);
+        range.insertNode(textNode);
+        range.setStartAfter(textNode);
+        range.collapse(true);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      this._textarea.dispatchEvent(new InputEvent('input', {
+        inputType: 'insertFromPaste',
+        data: text,
+        bubbles: true,
+        cancelable: false,
+      }));
+    }
   }
 
   _handleBeforeInput(e) {
