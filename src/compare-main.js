@@ -2,6 +2,7 @@
 
 import { importFromJSON } from './features/export.js';
 import { saveDocument, loadDocument } from './core/storage.js';
+import { verifyDocument } from './core/hashing.js';
 import { DIMENSIONS, computeDimension } from './features/dimensions.js';
 import { ScatterChart, getSeriesColor } from './ui/chart.js';
 
@@ -13,10 +14,11 @@ const xSelect = document.getElementById('x-axis-select');
 const ySelect = document.getElementById('y-axis-select');
 const canvas = document.getElementById('compare-canvas');
 const emptyMsg = document.getElementById('compare-empty');
+const btnVerifyAll = document.getElementById('btn-verify-all');
 
 // --- State ---
 const STORAGE_KEY = 'writeproof_compare_docs';
-let documents = []; // [{ doc, color, visible, xData, yData }]
+let documents = []; // [{ doc, color, visible, verified, xData, yData }]
 let currentXDim = 'normalizedTime';
 let currentYDim = 'typingSpeed';
 let chart = null;
@@ -105,6 +107,7 @@ function addDocument(doc) {
     doc,
     color,
     visible: true,
+    verified: null, // null = not checked, true = valid, false = invalid
     xData: computeDimension(currentXDim, doc),
     yData: computeDimension(currentYDim, doc),
   };
@@ -201,6 +204,21 @@ function renderDocList() {
     const li = document.createElement('li');
     li.className = 'compare-doc-item';
 
+    // Verification status icon (left of color dot)
+    const status = document.createElement('span');
+    status.className = 'compare-doc-status';
+    if (entry.verified === true) {
+      status.textContent = '\u2705';
+      status.title = 'Verified';
+    } else if (entry.verified === false) {
+      status.textContent = '\u274C';
+      status.title = 'Verification failed';
+    } else {
+      status.textContent = '\u2014';
+      status.title = 'Not verified';
+      status.style.color = 'var(--color-gray-300)';
+    }
+
     const dot = document.createElement('span');
     dot.className = 'compare-doc-color';
     dot.style.backgroundColor = entry.color;
@@ -226,11 +244,35 @@ function renderDocList() {
 
     actions.appendChild(cb);
     actions.appendChild(removeBtn);
+    li.appendChild(status);
     li.appendChild(dot);
     li.appendChild(name);
     li.appendChild(actions);
     docListEl.appendChild(li);
   }
+}
+
+// --- Verification ---
+
+btnVerifyAll.addEventListener('click', verifyAll);
+
+async function verifyAll() {
+  btnVerifyAll.disabled = true;
+  btnVerifyAll.textContent = 'Verifying...';
+
+  for (const entry of documents) {
+    if (entry.verified !== null) continue; // already checked
+    try {
+      const result = await verifyDocument(entry.doc);
+      entry.verified = result.isValid;
+    } catch {
+      entry.verified = false;
+    }
+    renderDocList();
+  }
+
+  btnVerifyAll.disabled = false;
+  btnVerifyAll.textContent = 'Verify All';
 }
 
 // --- Go ---

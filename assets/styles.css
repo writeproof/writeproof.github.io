@@ -860,6 +860,13 @@ p { margin-bottom: 1rem; }
   padding: 0.5rem 0;
   font-size: 0.875rem;
 }
+.compare-doc-status {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  line-height: 1;
+  width: 16px;
+  text-align: center;
+}
 .compare-doc-color {
   width: 10px;
   height: 10px;
