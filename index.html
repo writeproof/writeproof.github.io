@@ -40,6 +40,12 @@
       </div>
     </div>
 
+    <!-- Instructor Warning Banner -->
+    <div id="instructor-banner" class="instructor-banner" style="display:none;">
+      <span>Your assignment keys are stored in this browser only. They will be lost if you clear cache, switch browsers, or change computers. <strong>Export your keys</strong> and store the backup somewhere safe.</span>
+      <button id="instructor-banner-close" class="btn-icon btn-sm" aria-label="Dismiss">&times;</button>
+    </div>
+
     <!-- Editor -->
     <div class="editor-area">
       <div id="editor" class="editor-textarea" contenteditable="true"
@@ -52,6 +58,8 @@
       <div class="editor-actions">
         <button id="btn-docs" class="btn btn-secondary btn-sm" aria-label="My Documents">My Documents</button>
         <button id="btn-new" class="btn btn-secondary btn-sm" aria-label="New document">New</button>
+        <button id="btn-assignment" class="btn btn-accent btn-sm" aria-label="Create seeded assignment">Create Assignment</button>
+        <button id="btn-keys" class="btn btn-secondary btn-sm" aria-label="Manage assignment keys" style="display:none;">Keys</button>
         <button id="btn-link" class="btn btn-secondary btn-sm" title="Insert link (Ctrl+K)">Link</button>
       </div>
       <div class="editor-actions">
@@ -214,6 +222,7 @@
   </div>
 
   <input type="file" id="file-input" accept=".json,.writeproof.json" style="display:none">
+  <input type="file" id="key-file-input" accept=".json" style="display:none">
 
   <!-- Link popup (shown on click of a link) -->
   <div id="link-popup" class="link-popup" style="display:none;">

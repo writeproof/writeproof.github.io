@@ -50,6 +50,7 @@ export function showModal(title, contentEl, options = {}) {
   document.body.appendChild(backdrop);
 
   const close = () => {
+    if (options.beforeClose && !options.beforeClose()) return;
     backdrop.remove();
     if (options.onClose) options.onClose();
   };

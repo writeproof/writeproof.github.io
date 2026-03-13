@@ -72,7 +72,7 @@ export async function buildCheckpoints(doc) {
   const { insertAt, deleteAt } = await import('../utils/helpers.js');
   const checkpoints = [];
   let content = '';
-  let hash = '0';
+  let hash = (doc.seeded && doc.seedHash) ? doc.seedHash : '0';
 
   for (let i = 0; i < doc.keystrokeLog.length; i++) {
     const event = doc.keystrokeLog[i];
@@ -100,6 +100,7 @@ export async function verifyDocument(doc) {
       keystrokeLog: doc.keystrokeLog,
       chainHash: doc.chainHash,
       content: doc.content,
+      seedHash: (doc.seeded && doc.seedHash) ? doc.seedHash : null,
     });
     return result.result;
   } catch {
@@ -124,7 +125,7 @@ async function verifyDocumentMainThread(doc) {
   // Use the latest valid checkpoint to skip already-verified events
   let startIndex = 0;
   let replayContent = '';
-  let prevHash = '0';
+  let prevHash = (doc.seeded && doc.seedHash) ? doc.seedHash : '0';
 
   if (doc.checkpoints && doc.checkpoints.length > 0) {
     const cp = doc.checkpoints[doc.checkpoints.length - 1];

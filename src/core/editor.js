@@ -20,7 +20,7 @@ export class Editor {
     this._autoSaveInterval = options.autoSaveInterval || 5000;
   }
 
-  createDocument(title = 'Untitled Document') {
+  createDocument(title = 'Untitled Document', seedOptions = null) {
     const now = new Date().toISOString();
     this._doc = {
       id: generateUUID(),
@@ -31,6 +31,8 @@ export class Editor {
       links: [],
       keystrokeLog: [],
       chainHash: '',
+      seeded: false,
+      seedHash: '',
       metadata: {
         totalKeystrokes: 0,
         totalTime: 0,
@@ -38,6 +40,11 @@ export class Editor {
         characterCount: 0,
       },
     };
+
+    if (seedOptions && seedOptions.seeded) {
+      this._doc.seeded = true;
+      this._doc.seedHash = seedOptions.seedHash;
+    }
 
     this._textarea.innerHTML = '';
     this._initRecording();

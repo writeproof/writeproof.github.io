@@ -587,6 +587,68 @@ p { margin-bottom: 1rem; }
   white-space: nowrap;
 }
 
+/* === Instructor Features === */
+.btn-accent {
+  background: #7c3aed;
+  color: var(--color-white);
+  border-color: #7c3aed;
+}
+.btn-accent:hover {
+  background: #6d28d9;
+  border-color: #6d28d9;
+}
+.instructor-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.625rem 1.25rem;
+  background: #fffbeb;
+  border-bottom: 1px solid #fbbf24;
+  font-size: 0.8125rem;
+  color: var(--color-gray-700);
+  line-height: 1.5;
+}
+.instructor-banner .btn-icon {
+  flex-shrink: 0;
+  border: none;
+  background: none;
+  font-size: 1.125rem;
+  cursor: pointer;
+}
+.key-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.key-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-gray-100);
+  font-size: 0.875rem;
+  gap: 1rem;
+}
+.key-item:last-child {
+  border-bottom: none;
+}
+.key-item-name {
+  font-weight: 600;
+}
+.key-item-meta {
+  font-size: 0.75rem;
+  color: var(--color-gray-400);
+  font-family: var(--font-mono, monospace);
+}
+.btn-pulse {
+  animation: pulse-accent 1.5s ease-in-out infinite;
+}
+@keyframes pulse-accent {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 58, 237, 0.4); }
+  50% { box-shadow: 0 0 0 8px rgba(124, 58, 237, 0); }
+}
+
 /* === Score Display === */
 /* === Writing Profile === */
 .profile-container {

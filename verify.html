@@ -40,6 +40,28 @@
         <input type="file" id="verify-file-input" accept=".json,.writeproof.json">
       </div>
       <p id="import-error" class="text-center" style="color: var(--color-danger); margin-top: 1rem; display: none;"></p>
+
+      <!-- Key Import Panel (shown when seeded doc needs a key) -->
+      <div id="key-import-panel" style="display:none; margin-top: 2rem;">
+        <div class="card" style="padding: 1.5rem;">
+          <h4 style="margin-bottom: 0.5rem;">Assignment Key Required</h4>
+          <p class="text-muted text-sm" style="margin-bottom: 1rem;">
+            This document uses instructor seeding. Import the assignment key file or enter the passcode to verify.
+          </p>
+          <div id="key-drop-zone" class="import-zone" role="button" tabindex="0" style="padding: 1.5rem 1rem; margin-bottom: 1rem;">
+            <p style="font-weight: 600; margin-bottom: 0.25rem;">Drop key file here</p>
+            <p class="text-sm">or click to browse</p>
+            <input type="file" id="key-file-verify-input" accept=".json" style="display:none">
+          </div>
+          <details style="margin-top: 0.75rem;">
+            <summary class="text-sm" style="cursor: pointer; font-weight: 500;">Enter passcode manually</summary>
+            <div style="margin-top: 0.75rem; display: flex; gap: 0.5rem;">
+              <input id="passcode-input" class="link-dialog-input" type="text" placeholder="32-character hex passcode" style="flex: 1;">
+              <button id="btn-passcode-submit" class="btn btn-sm btn-primary">Submit</button>
+            </div>
+          </details>
+        </div>
+      </div>
     </div>
 
     <!-- Replay Screen (hidden by default) -->
@@ -51,7 +73,8 @@
           <h3 id="replay-title" style="margin: 0;">Document</h3>
           <span id="replay-meta" class="text-sm text-muted"></span>
         </div>
-        <div class="flex gap-1">
+        <div class="flex gap-1 items-center">
+          <span id="seeded-badge" class="badge badge-info" style="display:none;">Seeded</span>
           <button id="btn-verify" class="btn btn-sm btn-outline">Verify</button>
           <button id="btn-show-score" class="btn btn-sm btn-primary">Profile</button>
           <button id="btn-back" class="btn btn-sm btn-secondary">Back</button>

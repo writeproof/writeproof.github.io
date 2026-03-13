@@ -30,7 +30,7 @@ async function computeEventHash(prevHash, event) {
 // Handle messages from main thread
 // Supports two operations:
 //   { type: 'hashBatch', id, prevHash, events } — hash a batch of events
-//   { type: 'verify', id, keystrokeLog, chainHash, content } — full verification
+//   { type: 'verify', id, keystrokeLog, chainHash, content, seedHash } — full verification
 self.onmessage = async (e) => {
   const { type, id } = e.data;
 
@@ -42,7 +42,7 @@ self.onmessage = async (e) => {
     }
     self.postMessage({ id, type: 'hashBatchResult', hash });
   } else if (type === 'verify') {
-    const { keystrokeLog, chainHash, content } = e.data;
+    const { keystrokeLog, chainHash, content, seedHash } = e.data;
 
     if (!keystrokeLog || keystrokeLog.length === 0) {
       self.postMessage({
@@ -59,7 +59,7 @@ self.onmessage = async (e) => {
     }
 
     let replayContent = '';
-    let prevHash = '0';
+    let prevHash = seedHash || '0';
 
     for (const event of keystrokeLog) {
       if (event.y === 'i' || event.y === 'p') {

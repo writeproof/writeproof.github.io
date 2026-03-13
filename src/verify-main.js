@@ -1,7 +1,8 @@
 // Entry point for verify.html — WriteProof verification and replay
 
 import { loadDocument } from './core/storage.js';
-import { verifyDocument } from './core/hashing.js';
+import { verifyDocument, generateContentHash } from './core/hashing.js';
+import { loadKey, importKeysFromJSON, importKeyFromPasscode } from './core/keys.js';
 import { importFromJSON } from './features/export.js';
 import { ReplayEngine } from './features/replay.js';
 import { analyzeWritingProfile } from './features/analytics.js';
@@ -29,6 +30,12 @@ const statusHash = document.getElementById('status-hash');
 const scoreSection = document.getElementById('score-section');
 const eventTypeBadge = document.getElementById('event-type-badge');
 const eventContentEl = document.getElementById('event-content');
+const seededBadge = document.getElementById('seeded-badge');
+const keyImportPanel = document.getElementById('key-import-panel');
+const keyDropZone = document.getElementById('key-drop-zone');
+const keyFileInput = document.getElementById('key-file-verify-input');
+const passcodeInput = document.getElementById('passcode-input');
+const btnPasscodeSubmit = document.getElementById('btn-passcode-submit');
 
 let engine = null;
 let currentDoc = null;
@@ -71,7 +78,21 @@ async function handleFile(file) {
 function loadDoc(doc) {
   currentDoc = doc;
 
-  // Switch to replay screen
+  // Check if seeded and whether we have the key
+  if (doc.seeded && doc.seedHash) {
+    seededBadge.style.display = 'inline-flex';
+    const key = loadKey(doc.seedHash);
+    if (!key) {
+      // Show key import panel — stay on import screen
+      keyImportPanel.style.display = 'block';
+      return;
+    }
+  } else {
+    seededBadge.style.display = 'none';
+  }
+
+  // Key resolved (or not seeded) — switch to replay screen
+  keyImportPanel.style.display = 'none';
   importScreen.style.display = 'none';
   replayScreen.style.display = 'flex';
 
@@ -91,6 +112,75 @@ function loadDoc(doc) {
   replayTextarea.textContent = '';
 }
 
+// --- Key Import on Verify Page ---
+
+keyDropZone.addEventListener('click', () => keyFileInput.click());
+
+keyDropZone.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  keyDropZone.classList.add('drag-over');
+});
+keyDropZone.addEventListener('dragleave', () => {
+  keyDropZone.classList.remove('drag-over');
+});
+keyDropZone.addEventListener('drop', (e) => {
+  e.preventDefault();
+  keyDropZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleKeyFile(file);
+});
+
+keyFileInput.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) handleKeyFile(file);
+  keyFileInput.value = '';
+});
+
+async function handleKeyFile(file) {
+  try {
+    const count = await importKeysFromJSON(file);
+    if (count === 0) {
+      showNotification('Key already exists or file did not contain new keys.', 'info');
+    } else {
+      showNotification(`Imported ${count} key(s).`, 'success');
+    }
+    // Retry loading the doc now that we have the key
+    if (currentDoc) loadDoc(currentDoc);
+  } catch (err) {
+    showNotification(err.message, 'error');
+  }
+}
+
+btnPasscodeSubmit.addEventListener('click', async () => {
+  const passcode = passcodeInput.value.trim();
+  if (!passcode) {
+    showNotification('Please enter a passcode.', 'warning');
+    return;
+  }
+  try {
+    const { seedHash } = await importKeyFromPasscode(passcode);
+    // Verify it matches the document's seedHash
+    if (currentDoc && currentDoc.seedHash && seedHash !== currentDoc.seedHash) {
+      showNotification('Passcode does not match this document.', 'error');
+      return;
+    }
+    showNotification('Passcode accepted.', 'success');
+    passcodeInput.value = '';
+    if (currentDoc) loadDoc(currentDoc);
+  } catch (err) {
+    showNotification(err.message, 'error');
+  }
+});
+
+passcodeInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    btnPasscodeSubmit.click();
+  }
+});
+
+// --- Event Indicator ---
+
 function formatEventContent(event) {
   if (!event) return 'Waiting...';
   const c = event.c || '';
@@ -104,9 +194,9 @@ function formatEventContent(event) {
 }
 
 function displayKey(ch) {
-  if (ch === ' ') return '\u2423';        // open box ␣
-  if (ch === '\n') return '\u23ce';       // return ⏎
-  if (ch === '\t') return '\u21e5';       // tab ⇥
+  if (ch === ' ') return '\u2423';        // open box
+  if (ch === '\n') return '\u23ce';       // return
+  if (ch === '\t') return '\u21e5';       // tab
   return `"${ch}"`;
 }
 
@@ -205,8 +295,23 @@ document.addEventListener('keydown', (e) => {
 // Verify hashes
 document.getElementById('btn-verify').addEventListener('click', async () => {
   if (!currentDoc) return;
-  showNotification('Verifying...', 'info', 10000);
 
+  // For seeded docs, verify the key is available and do sanity check
+  if (currentDoc.seeded && currentDoc.seedHash) {
+    const key = loadKey(currentDoc.seedHash);
+    if (!key) {
+      showNotification('Assignment key not found. Import the key file to verify.', 'warning');
+      return;
+    }
+    // Sanity check: verify stored passcode hashes to the document's seedHash
+    const computed = await generateContentHash(key.passcode);
+    if (computed !== currentDoc.seedHash) {
+      showNotification('Stored key does not match document seed. Verification aborted.', 'error');
+      return;
+    }
+  }
+
+  showNotification('Verifying...', 'info', 10000);
   const results = await verifyDocument(currentDoc);
 
   if (results.isValid) {
@@ -240,6 +345,7 @@ document.getElementById('btn-back').addEventListener('click', () => {
   currentDoc = null;
   replayScreen.style.display = 'none';
   importScreen.style.display = 'block';
+  keyImportPanel.style.display = 'none';
   scoreSection.style.display = 'none';
   replayTextarea.textContent = '';
   progressFill.style.width = '0%';
@@ -248,6 +354,8 @@ document.getElementById('btn-back').addEventListener('click', () => {
   eventTypeBadge.textContent = '--';
   eventTypeBadge.className = 'event-badge';
   eventContentEl.textContent = 'Waiting...';
+  seededBadge.style.display = 'none';
+  passcodeInput.value = '';
 });
 
 // --- Auto-load from URL params ---

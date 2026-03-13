@@ -20,7 +20,7 @@ export class KeystrokeRecorder {
     this._onKeystroke = null;
     this._isPaste = false;
     this._hashQueue = Promise.resolve();
-    this._prevHash = doc.chainHash || '0';
+    this._prevHash = doc.chainHash || (doc.seeded && doc.seedHash ? doc.seedHash : '0');
 
     this._handleInput = safe(this._handleInput.bind(this));
     this._handleBeforeInput = safe(this._handleBeforeInput.bind(this));
@@ -34,7 +34,7 @@ export class KeystrokeRecorder {
     this._recording = true;
     this._prevValue = getTextContent(this._textarea);
     this._prevSelStart = getSelectionOffsets(this._textarea).start;
-    this._prevHash = this._doc.chainHash || '0';
+    this._prevHash = this._doc.chainHash || (this._doc.seeded && this._doc.seedHash ? this._doc.seedHash : '0');
     this._textarea.addEventListener('beforeinput', this._handleBeforeInput);
     this._textarea.addEventListener('input', this._handleInput);
     this._textarea.addEventListener('select', this._handleSelect);
