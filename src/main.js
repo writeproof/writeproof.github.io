@@ -28,7 +28,7 @@ const saveStatusEl = document.getElementById('save-status');
 const fileInput = document.getElementById('file-input');
 const keyFileInput = document.getElementById('key-file-input');
 const instructorBanner = document.getElementById('instructor-banner');
-const btnKeys = document.getElementById('btn-keys');
+const toolbarInstructor = document.getElementById('toolbar-instructor');
 
 // Initialize editor
 const editor = new Editor(textarea, {
@@ -259,7 +259,7 @@ window.addEventListener('storage', (e) => {
 // === Instructor Features ===
 
 function showInstructorUI() {
-  btnKeys.style.display = '';
+  toolbarInstructor.style.display = 'flex';
   if (!sessionStorage.getItem('writeproof_banner_dismissed')) {
     instructorBanner.style.display = 'flex';
   }
@@ -270,13 +270,106 @@ document.getElementById('instructor-banner-close').addEventListener('click', () 
   sessionStorage.setItem('writeproof_banner_dismissed', '1');
 });
 
-// --- Create Assignment ---
+// --- Manage Keys ---
 
-document.getElementById('btn-assignment').addEventListener('click', () => {
+document.getElementById('btn-keys').addEventListener('click', () => {
+  openKeysModal();
+});
+
+function openKeysModal() {
+  const body = createElement('div', {}, []);
+
+  const warning = createElement('p', {
+    className: 'text-sm',
+    style: 'background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 0.75rem; margin-bottom: 1rem; line-height: 1.5;',
+    textContent: 'Your assignment keys are stored in this browser only. Export them and keep the backup safe. Without your keys, submitted documents cannot be verified.',
+  });
+  body.appendChild(warning);
+
+  const keys = listKeys();
+
+  if (keys.length === 0) {
+    body.appendChild(createElement('p', { className: 'text-muted', textContent: 'No assignment keys stored.' }));
+  } else {
+    const list = createElement('ul', { className: 'key-list' });
+    for (const key of keys) {
+      const item = createElement('li', { className: 'key-item' }, [
+        createElement('div', {}, [
+          createElement('div', { className: 'key-item-name', textContent: key.assignmentName }),
+          createElement('div', { className: 'key-item-meta', textContent: key.seedHash.slice(0, 12) + '...' }),
+          createElement('div', {
+            className: 'text-xs text-muted',
+            textContent: key.createdAt ? new Date(key.createdAt).toLocaleDateString() : '',
+          }),
+        ]),
+        createElement('button', {
+          className: 'btn btn-secondary btn-sm',
+          textContent: 'Export',
+          onClick: () => exportSingleKey(key.seedHash),
+        }),
+      ]);
+      list.appendChild(item);
+    }
+    body.appendChild(list);
+  }
+
+  const actions = createElement('div', {
+    className: 'flex gap-1',
+    style: 'margin-top: 1rem; justify-content: flex-end; flex-wrap: wrap;',
+  });
+
+  actions.appendChild(createElement('button', {
+    className: 'btn btn-accent btn-sm',
+    textContent: 'Create Assignment',
+    onClick: () => {
+      modal.close();
+      openCreateAssignmentModal();
+    },
+  }));
+
+  if (keys.length > 0) {
+    actions.appendChild(createElement('button', {
+      className: 'btn btn-secondary btn-sm',
+      textContent: 'Export All',
+      onClick: () => {
+        exportAllKeys();
+        showNotification('All keys exported.', 'success');
+      },
+    }));
+  }
+
+  actions.appendChild(createElement('button', {
+    className: 'btn btn-secondary btn-sm',
+    textContent: 'Import Keys',
+    onClick: () => keyFileInput.click(),
+  }));
+
+  body.appendChild(actions);
+
+  const modal = showModal('Assignment Keys', body);
+
+  // Handle key file import
+  const handleImport = safe(async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const count = await importKeysFromJSON(file);
+      showNotification(`Imported ${count} key(s).`, 'success');
+      modal.close();
+      openKeysModal(); // Refresh
+    } catch (err) {
+      showNotification(err.message, 'error');
+    }
+    keyFileInput.value = '';
+    keyFileInput.removeEventListener('change', handleImport);
+  });
+  keyFileInput.addEventListener('change', handleImport);
+}
+
+function openCreateAssignmentModal() {
   let keyExported = false;
   let createdSeedHash = null;
 
-  // Step 1: Name input
   const body = createElement('div', {}, []);
 
   const warning = createElement('p', {
@@ -399,93 +492,6 @@ document.getElementById('btn-assignment').addEventListener('click', () => {
       showNotification('Assignment created and starter document exported.', 'success');
     });
   });
-});
-
-// --- Manage Keys ---
-
-document.getElementById('btn-keys').addEventListener('click', () => {
-  openKeysModal();
-});
-
-function openKeysModal() {
-  const body = createElement('div', {}, []);
-
-  const warning = createElement('p', {
-    className: 'text-sm',
-    style: 'background: #fffbeb; border: 1px solid #fbbf24; border-radius: 6px; padding: 0.75rem; margin-bottom: 1rem; line-height: 1.5;',
-    textContent: 'Your assignment keys are stored in this browser only. Export them and keep the backup safe. Without your keys, submitted documents cannot be verified.',
-  });
-  body.appendChild(warning);
-
-  const keys = listKeys();
-
-  if (keys.length === 0) {
-    body.appendChild(createElement('p', { className: 'text-muted', textContent: 'No assignment keys stored.' }));
-  } else {
-    const list = createElement('ul', { className: 'key-list' });
-    for (const key of keys) {
-      const item = createElement('li', { className: 'key-item' }, [
-        createElement('div', {}, [
-          createElement('div', { className: 'key-item-name', textContent: key.assignmentName }),
-          createElement('div', { className: 'key-item-meta', textContent: key.seedHash.slice(0, 12) + '...' }),
-          createElement('div', {
-            className: 'text-xs text-muted',
-            textContent: key.createdAt ? new Date(key.createdAt).toLocaleDateString() : '',
-          }),
-        ]),
-        createElement('button', {
-          className: 'btn btn-secondary btn-sm',
-          textContent: 'Export',
-          onClick: () => exportSingleKey(key.seedHash),
-        }),
-      ]);
-      list.appendChild(item);
-    }
-    body.appendChild(list);
-  }
-
-  const actions = createElement('div', {
-    className: 'flex gap-1',
-    style: 'margin-top: 1rem; justify-content: flex-end;',
-  });
-
-  if (keys.length > 0) {
-    actions.appendChild(createElement('button', {
-      className: 'btn btn-secondary btn-sm',
-      textContent: 'Export All',
-      onClick: () => {
-        exportAllKeys();
-        showNotification('All keys exported.', 'success');
-      },
-    }));
-  }
-
-  actions.appendChild(createElement('button', {
-    className: 'btn btn-primary btn-sm',
-    textContent: 'Import Keys',
-    onClick: () => keyFileInput.click(),
-  }));
-
-  body.appendChild(actions);
-
-  const modal = showModal('Assignment Keys', body);
-
-  // Handle key file import
-  const handleImport = safe(async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    try {
-      const count = await importKeysFromJSON(file);
-      showNotification(`Imported ${count} key(s).`, 'success');
-      modal.close();
-      openKeysModal(); // Refresh
-    } catch (err) {
-      showNotification(err.message, 'error');
-    }
-    keyFileInput.value = '';
-    keyFileInput.removeEventListener('change', handleImport);
-  });
-  keyFileInput.addEventListener('change', handleImport);
 }
 
 // --- Init ---

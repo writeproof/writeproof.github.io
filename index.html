@@ -40,6 +40,31 @@
       </div>
     </div>
 
+    <!-- Toolbar -->
+    <div class="editor-toolbar">
+      <div class="toolbar-group">
+        <button id="btn-new" class="btn btn-secondary btn-sm" aria-label="New document">Create</button>
+        <button id="btn-docs" class="btn btn-secondary btn-sm" aria-label="My Documents">Open</button>
+        <button id="btn-export" class="btn btn-secondary btn-sm" aria-label="Download as JSON">Download</button>
+        <button id="btn-import" class="btn btn-secondary btn-sm" aria-label="Upload JSON file">Upload</button>
+      </div>
+      <div class="toolbar-divider"></div>
+      <div class="toolbar-group">
+        <button id="btn-link" class="btn btn-secondary btn-sm" title="Insert link (Ctrl+K)">Link</button>
+      </div>
+      <div class="toolbar-divider"></div>
+      <div class="toolbar-group">
+        <button id="btn-replay" class="btn btn-secondary btn-sm" aria-label="Replay writing">Replay</button>
+        <button id="btn-score" class="btn btn-secondary btn-sm" aria-label="View writing profile">Profile</button>
+      </div>
+      <div id="toolbar-instructor" class="toolbar-instructor" style="display:none;">
+        <div class="toolbar-divider"></div>
+        <div class="toolbar-group">
+          <button id="btn-keys" class="btn btn-accent btn-sm" aria-label="Manage assignment keys">Keys</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Instructor Warning Banner -->
     <div id="instructor-banner" class="instructor-banner" style="display:none;">
       <span>Your assignment keys are stored in this browser only. They will be lost if you clear cache, switch browsers, or change computers. <strong>Export your keys</strong> and store the backup somewhere safe.</span>
@@ -51,23 +76,6 @@
       <div id="editor" class="editor-textarea" contenteditable="true"
         role="textbox" aria-multiline="true" aria-label="Document editor"
         spellcheck="true" data-placeholder="Start writing..."></div>
-    </div>
-
-    <!-- Bottom Bar -->
-    <div class="editor-bottombar">
-      <div class="editor-actions">
-        <button id="btn-docs" class="btn btn-secondary btn-sm" aria-label="My Documents">My Documents</button>
-        <button id="btn-new" class="btn btn-secondary btn-sm" aria-label="New document">New</button>
-        <button id="btn-assignment" class="btn btn-accent btn-sm" aria-label="Create seeded assignment">Create Assignment</button>
-        <button id="btn-keys" class="btn btn-secondary btn-sm" aria-label="Manage assignment keys" style="display:none;">Keys</button>
-        <button id="btn-link" class="btn btn-secondary btn-sm" title="Insert link (Ctrl+K)">Link</button>
-      </div>
-      <div class="editor-actions">
-        <button id="btn-export" class="btn btn-secondary btn-sm" aria-label="Download as JSON">Download</button>
-        <button id="btn-import" class="btn btn-secondary btn-sm" aria-label="Upload JSON file">Upload</button>
-        <button id="btn-replay" class="btn btn-outline btn-sm" aria-label="Replay writing">Replay</button>
-        <button id="btn-score" class="btn btn-primary btn-sm" aria-label="View writing profile">Profile</button>
-      </div>
     </div>
     <div class="editor-footer">
       Created by <a href="https://frankrcastillo.github.io">Frank R. Castillo</a> (<a href="https://github.com/FrankRCastillo">GitHub</a>) &middot; <a href="https://www.buymeacoffee.com/writeproofapp">Buy me a coffee</a>
